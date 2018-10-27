@@ -1,14 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  </head>
-  <body style="overflow: hidden; background-color: rgba(0,0,0,0); margin: 0" >
-    <App/>
-    test
-  </body>
-  <script>window.exports = module.exports</script>
-  <script src="../node_modules/zone.js/dist/zone.js"></script>
-  <script src="../node_modules/reflect-metadata/Reflect.js"></script>
-  <script src="bootstrap.ts"></script>
+
+<head>
+  <!-- Insert this line above script imports  -->
+  <script>if (typeof module === 'object') { window.module = module; module = undefined; }</script>
+
+  <!-- normal script imports etc  -->
+  <script src="scripts/jquery.min.js"></script>
+
+  <!-- Insert this line after script imports -->
+  <script>if (window.module) module = window.module;</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" type="text/css" href="css/vex.css" />
+  <link rel="stylesheet" type="text/css" href="css/vex-theme-os.css" />
+</head>
+
+<body style="overflow: hidden; background-color: rgba(0,0,0,0); margin: 0">
+  <App/>
+</body>
+<script>window.exports = module.exports</script>
+<script src="../node_modules/zone.js/dist/zone.js"></script>
+<script src="../node_modules/reflect-metadata/Reflect.js"></script>
+<script src="bootstrap.ts"></script>
+
 </html>

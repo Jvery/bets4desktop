@@ -66,6 +66,7 @@
     "steam-user": "^3.28.1",
     "steamcommunity": "^3.37.1",
     "tslib": "^1.4.0",
+    "vex-js": "^4.1.0",
     "winston": "^3.0.0",
     "zone.js": "^0.7.4"
   },
