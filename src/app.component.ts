@@ -39,6 +39,7 @@ export class AppComponent implements OnInit {
     let tradingTimeout = 5000; //in ms
     let botSteamId = "";
     let sentTrades: any[] = [];
+    let currentTradesInApi: any;
     let steamClient = new SteamClient.CMClient();
     let community = new SteamCommunity({});
     let client = new SteamUser({
@@ -52,7 +53,8 @@ export class AppComponent implements OnInit {
       //"domain": "example.com", // Our domain is example.com
       "language": "en", // We want English item descriptions
       "cancelTime": 120000,
-      "pendingCancelTime": 30000
+      "pendingCancelTime": 30000,
+      "pollInterval": 9000
     });
     let logOnOptions = {
       "accountName": this.username,
@@ -78,14 +80,29 @@ export class AppComponent implements OnInit {
     client.on('disconnected', function (eresult, msg) {
       console.log(`disconnected ${eresult} ${msg}`);
       vex.dialog.alert(`disconnected ${msg}`);
+      //TODO: надо релогнуться
     });
+    
+    //TODO: возможно стоит релогать 
+    manager.on('sessionExpired', err => {
+      if (err) {
+        console.error(`ERROR manager session expired ${err.name} \n ${err.message} \n ${err.stack}`);
+      }
+      console.log(`Session manager expired trying to relog...`);
+    })
+
+    community.on('sessionExpired', err => {
+      if (err) {
+        console.error(`ERROR community session expired ${err.name} \n ${err.message} \n ${err.stack}`);
+      }
+      console.log(`Session community expired trying to relog...`);
+    })
 
     //залогинились, но пока не до конца
     client.on('loggedOn', function (details, parental) {
       console.log(`loggedOn ${details} ${parental}`)
       botSteamId = "" + client && client.client && client.client.steamID;
       console.log(`steamId ${botSteamId}`);
-      client.setPersona(SteamUser.Steam.EPersonaState.Online);
     });
 
     //получили стимгвард, просим ввести код
@@ -121,7 +138,13 @@ export class AppComponent implements OnInit {
           return;
         }
         console.log("Bot API key: " + manager.apiKey);
-        //TODO: отправляем в апи апикей
+        if (botSteamId && manager && manager.apiKey) {
+          //TODO: отправляем в апи апикей
+          sendApiKey(botSteamId, manager.apiKey);
+        } else {
+          console.log(`not logged in properly ${botSteamId} ${manager.apiKey}`)
+          return;
+        }
         //залогинились
         if (!is_tradingDemon_started) {
           is_tradingDemon_started = true;
@@ -131,18 +154,66 @@ export class AppComponent implements OnInit {
       community.setCookies(cookies);
     });
 
+    manager.on('sentOfferChanged', function (offer, oldState) {
+      console.log(`TradeId ${offer.data('trade_id')} offer #${offer.id} changed: ${TradeOfferManager.ETradeOfferState[oldState]} -> ${TradeOfferManager.ETradeOfferState[offer.state]}`);
+      if (offer.state === 2 || offer.state === 9) { //активный трейд - 2 или ждет подтверждения 9
+        //это может быть активный трейд с предыдущей сессии
+        if (sentTrades.findIndex(trade => trade.trade_id === offer.data('trade_id')) === -1) {
+          console.log(`Added ${offer.data('trade_id')} to sentTrades array coz found it in active state`);
+          sentTrades.push({
+            trade_id: offer.data('trade_id'),
+            trade_created_time: Date.now()
+          });
+        }
+        return;
+      } else if (offer.state === 3) { //успешный трейд
+        reportTradeByOfferAndStatus(offer, 1);
+      } else { //TODO: проверка всех статусов отмены
+        reportTradeByOfferAndStatus(offer, 2);
+      }
+    });
+
+    manager.on('unknownOfferSent', function (offer) {
+      try {
+        console.log(`unknownOfferSent #${offer.id} trade_id ${offer.data('trade_id')} message ${offer.message}`);
+        offer.data('error', 'steam is unstable at the momnent, try again later');
+        let foundTrade = currentTradesInApi.find(trade => trade.bot_id === botSteamId && offer.message === `Protection Code: ${trade.protection_code}`);
+        if (foundTrade) {
+          console.log(`Found trade in api for offer #${offer.id}, setting trade_id to ${foundTrade.trade_id}`);
+          offer.data('trade_id', foundTrade.trade_id);
+        } else {
+          console.log(`Can't find offer #${offer.id} in currentTradesInApi`);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    });
+
+    manager.on('newOffer', function (offer) {
+      try {
+        //TODO: проверяем на обманные трейды и отменяем их
+        console.log(`got new offer ${JSON.stringify(offer)}`);
+      } catch (error) {
+        console.error(error);
+      }
+    });
+
     async function tradingDemon() {
       try {
         if (client && client.client && client.client.loggedOn) {
           let trades = await getTrades(botSteamId);
           console.log(`Got ${trades && trades.length || 0} trades in bets4pro API`);
           if (trades) {
+            currentTradesInApi = trades;
             for (let i = 0; i < trades.length; i++) {
               const trade = trades[i];
+              console.log(`${sentTrades.findIndex(sent_trade => sent_trade.trade_id == trade.trade_id)}`)
+              console.log(`${botSteamId} ${trade.seller_data.steamid}`);
+              console.log(`${trade.status}`);
               if (trade.status != 0 ||
                 trade.seller_data.steamid != botSteamId ||
-                sentTrades.findIndex(sent_trade => sent_trade.trade_id == trade.trade_id) == -1) {
-                console.log(`no need to create trade ${trade}`);
+                sentTrades.findIndex(sent_trade => sent_trade.trade_id == trade.trade_id) != -1) {
+                console.log(`no need to create trade ${JSON.stringify(trade)}`);
                 continue;
               }
               if (!client || !client.client || !client.client.loggedOn) {
@@ -181,8 +252,15 @@ export class AppComponent implements OnInit {
         if (err) {
           console.error(`ERROR getting escrow ${err.name} \n ${err.message} \n ${err.stack}`);
           offer.data('error', err.message);
-          //TODO: надо репортить статус
-          //reportTradeToBets4proAPIbyOffer(offer, 2);
+          console.log(sentTrades);
+          var index = sentTrades.indexOf(trade);
+          if (index > -1) {
+            sentTrades.splice(index, 1);
+          } else {
+            //TODO: надо репортить статус
+            //reportTradeToBets4proAPIbyOffer(offer, 2);
+          }
+          console.log(sentTrades);
           return;
         } else {
           if (me.escrowDays !== 0 || them.escrowDays !== 0) {
@@ -217,6 +295,37 @@ export class AppComponent implements OnInit {
       })
     }
 
+    async function sendApiKey(steamId: any, apiKey: any){
+      TODO: //отправлять пока не получим норм ответ
+      try {
+        let result = await bets4proSaveApiKey(steamId, apiKey)
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
+      //TODO: report until success
+      try {
+        let o_tradeoffer_id = 0;
+        let o_trade_id = 0;
+        let o_tradeoffer_status = 0;
+        let o_error = "";
+        if (tradeoffer) {
+          o_trade_id = tradeoffer.data('trade_id');
+          o_tradeoffer_id = tradeoffer.id;
+          o_tradeoffer_status = tradeoffer.state;
+          o_error = tradeoffer.data('error');
+        }
+        console.log(`reporting trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error}`);
+        if (o_trade_id) {
+          let result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
     async function getTrades(botSteamId: any) {
       try {
         let responseFromApi = JSON.parse(await bets4proGetTradesRequest(botSteamId));
@@ -228,7 +337,7 @@ export class AppComponent implements OnInit {
         console.error(`getTrades ${error}`);
       }
     }
-    function bets4proGetTradesRequest(botSteamId) {
+    function bets4proGetTradesRequest(botSteamId: any) {
       return new Promise(function (resolve, reject) {
         request.post({
           url: "http://api.bets4.pro/api_user_trades.php ",
@@ -245,6 +354,51 @@ export class AppComponent implements OnInit {
           });
       });
     }
+
+    function bets4proSaveApiKey(botSteamId: any, apiKey: any) {
+      return new Promise(function (resolve, reject) {
+        request.post({
+          url: "http://api.bets4.pro/user_trades_api_post.php ",
+          form: {
+            steamid: botSteamId,
+            api_key_seller: apiKey
+          }
+        },
+          function (error, response, body) {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(body);
+            }
+          });
+      });
+    }
+
+    function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any) {
+      return new Promise(function (resolve, reject) {
+        request.post({
+          url: "http://api.bets4.pro/postapi.php",
+          form: {
+            trade_id: tradeId,
+            status: tradeStatus,
+            tradeoffer_id: tradeofferId,
+            tradeoffer_state: tradeofferState,
+            error: errorMessage
+          }
+        },
+          function (error, response, body) {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(body);
+            }
+          });
+      });
+    }
+
+   
+
+
   }
 }
 
