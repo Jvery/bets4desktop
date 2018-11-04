@@ -36,7 +36,7 @@ export class AppComponent implements OnInit {
 
   login() {
     let is_tradingDemon_started = false;
-    let tradingTimeout = 5000; //in ms
+    let tradingTimeout = 50000; //in ms
     let botSteamId = "";
     let sentTrades: any[] = [];
     let currentTradesInApi: any;
@@ -48,12 +48,11 @@ export class AppComponent implements OnInit {
     });
 
     let manager = new TradeOfferManager({
-      "steam": client, // Polling every 30 seconds is fine since we get notifications from Steam
+      "steam": client,
       "community": community,
-      //"domain": "example.com", // Our domain is example.com
       "language": "en", // We want English item descriptions
-      "cancelTime": 120000,
-      "pendingCancelTime": 30000,
+      "cancelTime": 5*60*1000,
+      "pendingCancelTime": 10*60*1000,
       "pollInterval": 9000
     });
     let logOnOptions = {
@@ -298,7 +297,8 @@ export class AppComponent implements OnInit {
     async function sendApiKey(steamId: any, apiKey: any){
       TODO: //отправлять пока не получим норм ответ
       try {
-        let result = await bets4proSaveApiKey(steamId, apiKey)
+        let result = await bets4proSaveApiKey(steamId, apiKey);
+        console.log(`sendApiKey result ${JSON.stringify(result)}`);
       } catch (error) {
         console.error(error);
       }
@@ -320,6 +320,7 @@ export class AppComponent implements OnInit {
         console.log(`reporting trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error}`);
         if (o_trade_id) {
           let result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error);
+          console.log(`reportTradeByOfferAndStatus result ${JSON.stringify(result)}`);
         }
       } catch (error) {
         console.error(error);
@@ -358,7 +359,7 @@ export class AppComponent implements OnInit {
     function bets4proSaveApiKey(botSteamId: any, apiKey: any) {
       return new Promise(function (resolve, reject) {
         request.post({
-          url: "http://api.bets4.pro/user_trades_api_post.php ",
+          url: "http://api.bets4.pro/user_trades_apikey_post.php ",
           form: {
             steamid: botSteamId,
             api_key_seller: apiKey
@@ -377,7 +378,7 @@ export class AppComponent implements OnInit {
     function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any) {
       return new Promise(function (resolve, reject) {
         request.post({
-          url: "http://api.bets4.pro/postapi.php",
+          url: "http://api.bets4.pro/user_trades_post.php",
           form: {
             trade_id: tradeId,
             status: tradeStatus,
