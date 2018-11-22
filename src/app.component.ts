@@ -138,7 +138,6 @@ export class AppComponent implements OnInit {
         }
         console.log("Bot API key: " + manager.apiKey);
         if (botSteamId && manager && manager.apiKey) {
-          //TODO: отправляем в апи апикей
           sendApiKey(botSteamId, manager.apiKey);
         } else {
           console.log(`not logged in properly ${botSteamId} ${manager.apiKey}`)
@@ -167,6 +166,7 @@ export class AppComponent implements OnInit {
         return;
       } else if (offer.state === 3) { //успешный трейд
         reportTradeByOfferAndStatus(offer, 1);
+        //TODO:егор должен проверять успешность у себя чтоб не подделывали запросы
       } else { //TODO: проверка всех статусов отмены
         reportTradeByOfferAndStatus(offer, 2);
       }
@@ -252,12 +252,12 @@ export class AppComponent implements OnInit {
           console.error(`ERROR getting escrow ${err.name} \n ${err.message} \n ${err.stack}`);
           offer.data('error', err.message);
           console.log(sentTrades);
+          //TODO: чет я тут непонятное наворотил, он же всегда в массиве отправленых будет
           var index = sentTrades.indexOf(trade);
           if (index > -1) {
             sentTrades.splice(index, 1);
           } else {
-            //TODO: надо репортить статус
-            //reportTradeToBets4proAPIbyOffer(offer, 2);
+            reportTradeByOfferAndStatus(offer, 2);
           }
           console.log(sentTrades);
           return;
@@ -265,8 +265,7 @@ export class AppComponent implements OnInit {
           if (me.escrowDays !== 0 || them.escrowDays !== 0) {
             console.log('escrow here. them:' + them.escrowDays + " me:" + me.escrowDays);
             offer.data('error', `Escrow. Me: ${me.escrowDays} Them: ${them.escrowDays}`);
-            //TODO: надо репортить статус
-            //reportTradeToBets4proAPIbyOffer(offer, 3);
+            reportTradeByOfferAndStatus(offer, 3);
             return;
           } else {
             offer.send(function (err: any, status: any) {
@@ -274,8 +273,7 @@ export class AppComponent implements OnInit {
                 console.error(`ERROR sending offer ${err.name} \n ${err.message} \n ${err.stack}`);
                 offer.data('error', err.message);
                 console.log(`Offer #${offer && offer.id} tradeid ${trade && trade.trade_id} will be reported as unsucceful in 3min`);
-                //TODO: надо репортить статус
-                //setTimeout(reportTradeToBets4proAPIbyOffer.bind(null, currentOffer, 5, "", trade.trade_id), 180000); //репортим через 3 минут если этот трейд не отрепортится сам черз поллдату
+                setTimeout(reportTradeByOfferAndStatus.bind(null, offer, 5), 180000); //репортим через 3 минут если этот трейд не отрепортится сам черз поллдату
                 //TODO: возможно нужно проверять этот оффер в поллдате
                 return;
               } else {
@@ -295,17 +293,23 @@ export class AppComponent implements OnInit {
     }
 
     async function sendApiKey(steamId: any, apiKey: any){
-      TODO: //отправлять пока не получим норм ответ
+      let result = '';
       try {
-        let result = await bets4proSaveApiKey(steamId, apiKey);
+        result = await bets4proSaveApiKey(steamId, apiKey);
         console.log(`sendApiKey result ${JSON.stringify(result)}`);
       } catch (error) {
         console.error(error);
       }
+      //report until success
+      if (result.indexOf("gjgrf_ok") === -1) {
+        setTimeout(sendApiKey.bind(null, steamId, apiKey), 10000);
+      } else {
+        return result;
+      }
     }
 
     async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
-      //TODO: report until success
+      let result = '';
       try {
         let o_tradeoffer_id = 0;
         let o_trade_id = 0;
@@ -319,11 +323,17 @@ export class AppComponent implements OnInit {
         }
         console.log(`reporting trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error}`);
         if (o_trade_id) {
-          let result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error);
+          result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error);
           console.log(`reportTradeByOfferAndStatus result ${JSON.stringify(result)}`);
         }
       } catch (error) {
         console.error(error);
+      }
+      //report until success
+      if (result.indexOf("gjgrf_ok") === -1) {
+        setTimeout(reportTradeByOfferAndStatus.bind(null, tradeoffer, tradeStatus), 10000);
+      } else {
+        return result;
       }
     }
 
