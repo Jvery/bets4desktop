@@ -5,7 +5,7 @@ import { enableLiveReload } from 'electron-compile';
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow: Electron.BrowserWindow | null;
 
-const isDevMode = process.execPath.match(/[\\/]electron/);
+const isDevMode = true;// process.execPath.match(/[\\/]electron/);
 
 if (isDevMode) enableLiveReload();
 

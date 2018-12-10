@@ -35,6 +35,7 @@ export class AppComponent implements OnInit {
   }
 
   login() {
+    //sendApiKey(76561198072030106, 'test');
     let is_tradingDemon_started = false;
     let tradingTimeout = 50000; //in ms
     let botSteamId = "";
