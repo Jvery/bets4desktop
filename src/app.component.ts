@@ -35,7 +35,6 @@ export class AppComponent implements OnInit {
   }
 
   login() {
-    //sendApiKey(76561198072030106, 'test');
     let is_tradingDemon_started = false;
     let tradingTimeout = 50000; //in ms
     let botSteamId = "";
@@ -88,14 +87,14 @@ export class AppComponent implements OnInit {
       if (err) {
         console.error(`ERROR manager session expired ${err.name} \n ${err.message} \n ${err.stack}`);
       }
-      console.log(`Session manager expired trying to relog...`);
+      console.log(`Session manager expired need relog...`);
     })
 
     community.on('sessionExpired', err => {
       if (err) {
         console.error(`ERROR community session expired ${err.name} \n ${err.message} \n ${err.stack}`);
       }
-      console.log(`Session community expired trying to relog...`);
+      console.log(`Session community expired need relog...`);
     })
 
     //залогинились, но пока не до конца
@@ -148,6 +147,7 @@ export class AppComponent implements OnInit {
         if (!is_tradingDemon_started) {
           is_tradingDemon_started = true;
           tradingDemon();
+          appStatusDemon(60*1000);
         }
       });
       community.setCookies(cookies);
@@ -197,6 +197,28 @@ export class AppComponent implements OnInit {
         console.error(error);
       }
     });
+
+    async function appStatusDemon(timeout: number) {
+      let isCommunityLoggedIn = false;
+      try {
+        isCommunityLoggedIn = await getIsCommunityLoggedIn(community);
+      } catch (error) {
+        console.error(error)
+      }
+      try {
+        console.log(`reporting appstatus: steamid ${botSteamId} status ${isCommunityLoggedIn ? 1 : 0}`)
+        let result = await bets4proReportAppStatus(botSteamId, isCommunityLoggedIn ? 1 : 0);
+        console.log(`appStatusDemon result: ${JSON.stringify(result)}`)
+      } catch (error) {
+        console.error(error)
+      }
+      if (!timeout) {
+        timeout = 1 * 60 * 1000;
+      }
+      setTimeout(() => {
+        appStatusDemon(timeout);
+      }, timeout);
+    }
 
     async function tradingDemon() {
       try {
@@ -386,6 +408,7 @@ export class AppComponent implements OnInit {
       });
     }
 
+    
     function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any) {
       return new Promise(function (resolve, reject) {
         request.post({
@@ -408,7 +431,36 @@ export class AppComponent implements OnInit {
       });
     }
 
+    function bets4proReportAppStatus(steamid: any, app_status: number) {
+      return new Promise(function (resolve, reject) {
+        request.post({
+          url: "http://api.bets4.pro/api_app_status.php",
+          form: {
+            steamid: steamid,
+            app_status: app_status
+          }
+        },
+          function (error, response, body) {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(body);
+            }
+          });
+      });
+    }
    
+    function getIsCommunityLoggedIn(community) {
+      return new Promise(function (resolve, reject) {
+        community.loggedIn(function (err, loggedIn, familyView) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(loggedIn);
+          }
+        });
+      });
+    }
 
 
   }
