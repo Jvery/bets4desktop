@@ -7,14 +7,14 @@ let SteamClient = require('steam-client');
 let SteamUser = require('steam-user');
 let SteamCommunity = require('steamcommunity');
 let SteamTotp = require('steam-totp');
-let TradeOfferManager = require('steam-tradeoffer-manager')
+let TradeOfferManager = require('steam-tradeoffer-manager');
 let fs = require('fs');
 let request = require('request');
 let winston = require('winston');
 let Bottleneck = require("bottleneck");
 var vex = require('vex-js')
-vex.registerPlugin(require('vex-dialog'))
-vex.defaultOptions.className = 'vex-theme-os'
+vex.registerPlugin(require('vex-dialog'));
+vex.defaultOptions.className = 'vex-theme-os';
 
 @Component({
   selector: 'App',
@@ -32,27 +32,27 @@ export class AppComponent implements OnInit {
   public password = '';
   ngOnInit(): void {
     console.log('component initialized');
+    this.username = 'M6kvuxlxHUwswzl';
+    this.password = '9prSt98baMU7JAg';
   }
 
   login() {
+    let self = this;
     let is_tradingDemon_started = false;
     let tradingTimeout = 50000; //in ms
     let botSteamId = "";
     let sentTrades: any[] = [];
     let currentTradesInApi: any;
     let steamClient = new SteamClient.CMClient();
-    let community = new SteamCommunity({});
-    let client = new SteamUser({
-      steamClient,
-      promptSteamGuardCode: false
-    });
-
+    let community = new SteamCommunity();
+    let client = new SteamUser(steamClient, { promptSteamGuardCode: false });
+    
     let manager = new TradeOfferManager({
       "steam": client,
       "community": community,
       "language": "en", // We want English item descriptions
-      "cancelTime": 5*60*1000,
-      "pendingCancelTime": 10*60*1000,
+      "cancelTime": 5 * 60 * 1000,
+      "pendingCancelTime": 10 * 60 * 1000,
       "pollInterval": 9000
     });
     let logOnOptions = {
@@ -81,7 +81,7 @@ export class AppComponent implements OnInit {
       vex.dialog.alert(`disconnected ${msg}`);
       //TODO: надо релогнуться
     });
-    
+
     //TODO: возможно стоит релогать 
     manager.on('sessionExpired', err => {
       if (err) {
@@ -147,7 +147,7 @@ export class AppComponent implements OnInit {
         if (!is_tradingDemon_started) {
           is_tradingDemon_started = true;
           tradingDemon();
-          appStatusDemon(60*1000);
+          appStatusDemon(60 * 1000);
         }
       });
       community.setCookies(cookies);
@@ -315,7 +315,7 @@ export class AppComponent implements OnInit {
       })
     }
 
-    async function sendApiKey(steamId: any, apiKey: any){
+    async function sendApiKey(steamId: any, apiKey: any) {
       let result = '';
       try {
         result = await bets4proSaveApiKey(steamId, apiKey);
@@ -408,7 +408,7 @@ export class AppComponent implements OnInit {
       });
     }
 
-    
+
     function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any) {
       return new Promise(function (resolve, reject) {
         request.post({
@@ -449,7 +449,7 @@ export class AppComponent implements OnInit {
           });
       });
     }
-   
+
     function getIsCommunityLoggedIn(community) {
       return new Promise(function (resolve, reject) {
         community.loggedIn(function (err, loggedIn, familyView) {
