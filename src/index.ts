@@ -85,7 +85,10 @@ ipcMain.on('login-steam', (event, args) => {
   console.log(`received login-steam msg wtih args: ${JSON.stringify(args)}`);
   login(args.username, args.password);
 });
-
+ipcMain.on('relog-steam', (event, args) => {
+  console.log(`received relog-steam msg wtih args: ${JSON.stringify(args)}`);
+  relog();
+});
 
 function login(username: string, password: string) {
   let logOnOptions = {
@@ -98,6 +101,12 @@ function login(username: string, password: string) {
     mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
   }
 }
+
+function relog() {
+  mainWindow.webContents.send('console-log', `doing weblogon`);
+  client.webLogOn();
+}
+
 
 let is_tradingDemon_started = false;
 let tradingTimeout = 50000; //in ms
@@ -192,7 +201,7 @@ client.on('webSession', function (sessionID, cookies) {
     if (botSteamId && manager && manager.apiKey) {
       sendApiKey(botSteamId, manager.apiKey);
     } else {
-      mainWindow.webContents.send('console-log', `not logged in properly ${botSteamId} ${manager.apiKey}`)
+      mainWindow.webContents.send('console-log', `webSession not logged in properly ${botSteamId} ${manager.apiKey}`)
       return;
     }
     //залогинились
@@ -200,6 +209,7 @@ client.on('webSession', function (sessionID, cookies) {
       is_tradingDemon_started = true;
       tradingDemon();
       appStatusDemon(60 * 1000);
+      relogginDemon();
     }
   });
   community.setCookies(cookies);
@@ -256,6 +266,29 @@ manager.on('newOffer', function (offer) {
   }
 });
 
+let lastRelogTimeInMs = (new Date()).getTime();
+let minTimeBetweenRelogsInMs = 1000*60*2;
+let relogginDemonTimeoutInMs = 1000*60;
+async function relogginDemon(){
+  try {
+    mainWindow.webContents.send('console-log', `relogginDemon started`);
+    let currentTimeInMs = (new Date()).getTime();
+    if (!(client && client.client && client.client.loggedOn)){
+      mainWindow.webContents.send('console-log', `relogginDemon need relog!`);
+      if (currentTimeInMs-lastRelogTimeInMs>minTimeBetweenRelogsInMs){
+        mainWindow.webContents.send('console-log', `relogginDemon calling weblogon`);
+        client.webLogOn();
+      } else {
+        mainWindow.webContents.send('console-log', `relogginDemon cant relog coz time ${currentTimeInMs}-${lastRelogTimeInMs}>${minTimeBetweenRelogsInMs}`);
+      }
+    }
+  } catch (error) {
+    mainWindow.webContents.send('console-error', `relogginDemon ${error}`);
+  } finally {
+    setTimeout(relogginDemon.bind(null), relogginDemonTimeoutInMs);
+  }
+}
+
 async function appStatusDemon(timeout: number) {
   let isCommunityLoggedIn = false;
   try {
@@ -298,15 +331,23 @@ async function tradingDemon() {
             mainWindow.webContents.send('console-log', `no need to create trade ${JSON.stringify(trade)}`);
             continue;
           }
-          if (!client || !client.client || !client.client.loggedOn) {
-            mainWindow.webContents.send('console-log', `Can't send trade ${trade.trade_id} steamClient loggedOn ${client && client.client && client.client.loggedOn}`);
+          if (client && client.client && client.client.loggedOn) {
+            let isCommunityLoggedIn = await getIsCommunityLoggedIn(community);
+            if (!isCommunityLoggedIn) {
+              mainWindow.webContents.send('console-log', `Can't send trades isCommunityLoggedIn: ${isCommunityLoggedIn}`);
+              client.client.loggedOn = false;
+              setTimeout(tradingDemon.bind(null), 15000);
+              return;
+            }
+          } else {
+            mainWindow.webContents.send('console-log', `Can't send trade ${trade.trade_id} steamClient loggedOn ${client && client.client && client.client.loggedOn}`);            
             continue;
           }
           createTradeoffer(trade);
         }
       }
     } else {
-      mainWindow.webContents.send('console-log', `not logged in`);
+      mainWindow.webContents.send('console-log', `trading demon not logged in`);
     }
   } catch (error) {
     console.log(error);

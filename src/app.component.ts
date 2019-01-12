@@ -25,6 +25,7 @@ vex.defaultOptions.className = 'vex-theme-os';
     <input [(ngModel)]="username" (keyup.enter)="login()">
     <input [(ngModel)]="password" type="password" (keyup.enter)="login()">
     <button (click)="login()">login</button>
+    <button (click)="relog()">relog</button>
   </div>`
 })
 export class AppComponent implements OnInit {
@@ -76,7 +77,9 @@ export class AppComponent implements OnInit {
   login(){
     ipcRenderer.send('login-steam', {username:this.username,password:this.password})
   }
-
+  relog(){
+    ipcRenderer.send('relog-steam', {})
+  }
   login1() {
     let self = this;
     let is_tradingDemon_started = false;
