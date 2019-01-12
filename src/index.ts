@@ -238,7 +238,7 @@ manager.on('sentOfferChanged', function (offer, oldState) {
 manager.on('unknownOfferSent', function (offer) {
   try {
     mainWindow.webContents.send('console-log', `unknownOfferSent #${offer.id} trade_id ${offer.data('trade_id')} message ${offer.message}`);
-    offer.data('error', 'steam is unstable at the momnent, try again later');
+    offer.data('error', 'unknownOffer');
     if (!currentTradesInApi) {
       mainWindow.webContents.send('console-log', `unknownOfferSent no trades in currentTradesInApi`);
       return;
@@ -322,9 +322,9 @@ async function tradingDemon() {
         currentTradesInApi = trades;
         for (let i = 0; i < trades.length; i++) {
           const trade = trades[i];
-          mainWindow.webContents.send('console-log', `${sentTrades.findIndex(sent_trade => sent_trade.trade_id == trade.trade_id)}`)
-          mainWindow.webContents.send('console-log', `${botSteamId} ${trade.seller_data.steamid}`);
-          mainWindow.webContents.send('console-log', `${trade.status}`);
+          // mainWindow.webContents.send('console-log', `${sentTrades.findIndex(sent_trade => sent_trade.trade_id == trade.trade_id)}`)
+          // mainWindow.webContents.send('console-log', `${botSteamId} ${trade.seller_data.steamid}`);
+          // mainWindow.webContents.send('console-log', `${trade.status}`);
           if (trade.status != 0 ||
             trade.seller_data.steamid != botSteamId ||
             sentTrades.findIndex(sent_trade => sent_trade.trade_id == trade.trade_id) != -1) {
@@ -404,9 +404,9 @@ function createTradeoffer(trade: any) {
             //TODO: возможно нужно проверять этот оффер в поллдате
             return;
           } else {
+            reportTradeByOfferAndStatus(offer, 0);
             if (status == 'pending') {
-              mainWindow.webContents.send('console-log', `now need confirm offer. status: ${status}`)
-              //tryConfirmTradeoffer(currentOffer, 0, 10);
+              mainWindow.webContents.send('console-log', `now need confirm offer. status: ${status} Offer #${offer.id}`)
               return;
             } else {
               mainWindow.webContents.send('console-log', `Offer #${offer.id} tradeid ${trade.trade_id} sent successfully`);
@@ -437,7 +437,7 @@ async function sendApiKey(steamId: any, apiKey: any) {
 }
 
 async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
-  let result = '';
+  let result = {};
   try {
     let o_tradeoffer_id = 0;
     let o_trade_id = 0;
@@ -449,10 +449,13 @@ async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
       o_tradeoffer_status = tradeoffer.state;
       o_error = tradeoffer.data('error');
     }
-    mainWindow.webContents.send('console-log', `reporting trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error}`);
     if (o_trade_id) {
+      mainWindow.webContents.send('console-log', `reportTradeByOfferAndStatus trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error}`);
       result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error);
       mainWindow.webContents.send('console-log', `reportTradeByOfferAndStatus result ${JSON.stringify(result)}`);
+    } else {
+      mainWindow.webContents.send('console-log', `can't report without trade_id ${JSON.stringify(tradeoffer)}`);
+      return;
     }
   } catch (error) {
     console.log(error);
