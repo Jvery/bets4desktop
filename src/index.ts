@@ -109,7 +109,7 @@ function relog() {
 
 
 let is_tradingDemon_started = false;
-let tradingTimeout = 50000; //in ms
+let tradingDemonTimeout = 50000; //in ms
 let botSteamId = "";
 let sentTrades: any[] = [];
 let currentTradesInApi: any;
@@ -121,8 +121,8 @@ let manager = new TradeOfferManager({
   "steam": client,
   "community": community,
   "language": "en", // We want English item descriptions
-  "cancelTime": 5 * 60 * 1000,
-  "pendingCancelTime": 10 * 60 * 1000,
+  "cancelTime": 1 * 60 * 1000, //TODO: 5*60*1000
+  "pendingCancelTime": 2 * 60 * 1000, //TODO: 10*60*1000
   "pollInterval": 9000
 });
 
@@ -353,7 +353,7 @@ async function tradingDemon() {
     console.log(error);
     mainWindow.webContents.send('console-error', `tradingDemon ${error}`)
   } finally {
-    setTimeout(tradingDemon.bind(null), tradingTimeout);
+    setTimeout(tradingDemon.bind(null), tradingDemonTimeout);
   }
 }
 
@@ -454,7 +454,7 @@ async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
       result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error);
       mainWindow.webContents.send('console-log', `reportTradeByOfferAndStatus result ${JSON.stringify(result)}`);
     } else {
-      mainWindow.webContents.send('console-log', `can't report without trade_id ${JSON.stringify(tradeoffer)}`);
+      mainWindow.webContents.send('console-log', `can't report without trade_id `); //${JSON.stringify(tradeoffer)}
       return;
     }
   } catch (error) {
