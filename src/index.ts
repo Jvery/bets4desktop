@@ -109,7 +109,7 @@ function relog() {
 
 
 let is_tradingDemon_started = false;
-let tradingDemonTimeout = 50000; //in ms
+let tradingDemonTimeout = 5000; //in ms
 let botSteamId = "";
 let sentTrades: any[] = [];
 let currentTradesInApi: any;
@@ -122,7 +122,7 @@ let manager = new TradeOfferManager({
   "community": community,
   "language": "en", // We want English item descriptions
   "cancelTime": 1 * 60 * 1000, //TODO: 5*60*1000
-  "pendingCancelTime": 2 * 60 * 1000, //TODO: 10*60*1000
+  "pendingCancelTime": 1 * 60 * 1000, //TODO: 10*60*1000
   "pollInterval": 9000
 });
 
@@ -317,6 +317,7 @@ async function tradingDemon() {
   try {
     if (client && client.client && client.client.loggedOn) {
       let trades = await getTrades(botSteamId);
+      mainWindow.webContents.send('trades-update', trades);
       mainWindow.webContents.send('console-log', `Got ${trades && trades.length || 0} trades in bets4pro API`);
       if (trades) {
         currentTradesInApi = trades;
