@@ -39,7 +39,13 @@ const createWindow = async () => {
 app.on('ready', createWindow);
 
 // Quit when all windows are closed.
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
+  console.log(`stopping app`);
+  console.log(botSteamId);
+  if (botSteamId) {
+   let result = await bets4proReportAppStatus(botSteamId, 2);
+   console.log(result);
+  }
   // On OS X it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
@@ -110,6 +116,7 @@ function relog() {
 
 let is_tradingDemon_started = false;
 let tradingDemonTimeout = 5000; //in ms
+let appstatusDemonTimeout = 5000; //in ms
 let botSteamId = "";
 let sentTrades: any[] = [];
 let currentTradesInApi: any;
@@ -187,10 +194,11 @@ client.on('steamGuard', function (domain, callback) {
   });
 });
 
+//TODO: trycatch
 //окончательно залогинились, получили сессию
 client.on('webSession', function (sessionID, cookies) {
   mainWindow.webContents.send('console-log', `webSession ${sessionID} ${cookies}`);
-  manager.setCookies(cookies, function (err: any) {
+  manager.setCookies(cookies, async function (err: any) {
     if (err) {
       console.log(err);
       mainWindow.webContents.send('console-error', `ERROR setCookies ${err.name} \n ${err.message} \n ${err.stack}`);
@@ -207,14 +215,18 @@ client.on('webSession', function (sessionID, cookies) {
     //залогинились
     if (!is_tradingDemon_started) {
       is_tradingDemon_started = true;
+      let trades = await getTrades(botSteamId);
+      currentTradesInApi = trades;
       tradingDemon();
-      appStatusDemon(60 * 1000);
+      appStatusDemon(appstatusDemonTimeout);
       relogginDemon();
     }
   });
-  community.setCookies(cookies);
+  //community.setCookies(cookies);//no need to set cookies here
 });
 
+
+//TODO: try catch
 manager.on('sentOfferChanged', function (offer, oldState) {
   mainWindow.webContents.send('console-log', `TradeId ${offer.data('trade_id')} offer #${offer.id} changed: ${TradeOfferManager.ETradeOfferState[oldState]} -> ${TradeOfferManager.ETradeOfferState[offer.state]}`);
   if (offer.state === 2 || offer.state === 9) { //активный трейд - 2 или ждет подтверждения 9
@@ -291,15 +303,16 @@ async function relogginDemon(){
 
 async function appStatusDemon(timeout: number) {
   let isCommunityLoggedIn = false;
+  let isClientLoggedIn = client && client.client && client.client.loggedOn;
   try {
     isCommunityLoggedIn = await getIsCommunityLoggedIn(community);
   } catch (error) {
     console.log(error);
-    mainWindow.webContents.send('console-error', error)
+    mainWindow.webContents.send('console-error', `appStatusDemon error ${error}`)
   }
   try {
-    mainWindow.webContents.send('console-log', `reporting appstatus: steamid ${botSteamId} status ${isCommunityLoggedIn ? 1 : 0}`)
-    let result = await bets4proReportAppStatus(botSteamId, isCommunityLoggedIn ? 1 : 0);
+    mainWindow.webContents.send('console-log', `reporting appstatus: steamid ${botSteamId} isClientLoggedIn ${isClientLoggedIn} isCommunityLoggedIn ${isCommunityLoggedIn}  status ${isCommunityLoggedIn&&isClientLoggedIn ? 1 : 0}`)
+    let result = await bets4proReportAppStatus(botSteamId, isCommunityLoggedIn&&isClientLoggedIn ? 1 : 0);
     mainWindow.webContents.send('console-log', `appStatusDemon result: ${JSON.stringify(result)}`)
   } catch (error) {
     console.log(error);
