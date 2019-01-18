@@ -95,6 +95,13 @@ ipcMain.on('relog-steam', (event, args) => {
   console.log(`received relog-steam msg wtih args: ${JSON.stringify(args)}`);
   relog();
 });
+ipcMain.on('test-steam', (event, args) => {
+  console.log(`received test-steam msg wtih args: ${JSON.stringify(args)}`);
+  mainWindow.webContents.send('console-log', `doing test`);
+  community.getWebApiKey('', (err, key)=>{
+    mainWindow.webContents.send('console-log', `test-steam result ${err} , ${key}`);
+  });
+});
 
 function login(username: string, password: string) {
   let logOnOptions = {
@@ -113,10 +120,12 @@ function relog() {
   client.webLogOn();
 }
 
-
+let isRelogNeededByCommunity = false;
 let is_tradingDemon_started = false;
 let tradingDemonTimeout = 5000; //in ms
-let appstatusDemonTimeout = 5000; //in ms
+let appstatusDemonTimeout = 1*60*1000; //in ms
+let minTimeBetweenRelogsInMs = 1000*60*2; //in ms
+let relogginDemonTimeoutInMs = 1000*60; //in ms
 let botSteamId = "";
 let sentTrades: any[] = [];
 let currentTradesInApi: any;
@@ -162,6 +171,7 @@ manager.on('sessionExpired', err => {
     mainWindow.webContents.send('console-error', `ERROR manager session expired ${err.name} \n ${err.message} \n ${err.stack}`);
   }
   mainWindow.webContents.send('console-log', `Session manager expired need relog...`);
+  relogginDemon(0);
 })
 
 community.on('sessionExpired', err => {
@@ -219,10 +229,10 @@ client.on('webSession', function (sessionID, cookies) {
       currentTradesInApi = trades;
       tradingDemon();
       appStatusDemon(appstatusDemonTimeout);
-      relogginDemon();
+      relogginDemon(relogginDemonTimeoutInMs);
     }
   });
-  //community.setCookies(cookies);//no need to set cookies here
+  community.setCookies(cookies);//no need to set cookies here
 });
 
 
@@ -279,17 +289,21 @@ manager.on('newOffer', function (offer) {
 });
 
 let lastRelogTimeInMs = (new Date()).getTime();
-let minTimeBetweenRelogsInMs = 1000*60*2;
-let relogginDemonTimeoutInMs = 1000*60;
-async function relogginDemon(){
+
+async function relogginDemon(timeout: number) {
   try {
     mainWindow.webContents.send('console-log', `relogginDemon started`);
     let currentTimeInMs = (new Date()).getTime();
-    if (!(client && client.client && client.client.loggedOn)){
+    if (!(client && client.client && client.client.loggedOn) || isRelogNeededByCommunity){
       mainWindow.webContents.send('console-log', `relogginDemon need relog!`);
       if (currentTimeInMs-lastRelogTimeInMs>minTimeBetweenRelogsInMs){
-        mainWindow.webContents.send('console-log', `relogginDemon calling weblogon`);
-        client.webLogOn();
+        //sending request to receive error and relog
+        community.getWebApiKey('', (err, key) => {
+          mainWindow.webContents.send('console-log', `getWebApiKey from trading demon result ${err} , ${key}`);
+          mainWindow.webContents.send('console-log', `relogginDemon calling weblogon`);
+          isRelogNeededByCommunity = false;
+          client.webLogOn();
+        });
       } else {
         mainWindow.webContents.send('console-log', `relogginDemon cant relog coz time ${currentTimeInMs}-${lastRelogTimeInMs}>${minTimeBetweenRelogsInMs}`);
       }
@@ -297,7 +311,9 @@ async function relogginDemon(){
   } catch (error) {
     mainWindow.webContents.send('console-error', `relogginDemon ${error}`);
   } finally {
-    setTimeout(relogginDemon.bind(null), relogginDemonTimeoutInMs);
+    if (timeout) {
+      setTimeout(relogginDemon.bind(null), timeout);
+    }
   }
 }
 
@@ -306,6 +322,12 @@ async function appStatusDemon(timeout: number) {
   let isClientLoggedIn = client && client.client && client.client.loggedOn;
   try {
     isCommunityLoggedIn = await getIsCommunityLoggedIn(community);
+    if (!isCommunityLoggedIn){
+      isRelogNeededByCommunity = true;
+      relogginDemon(0);
+    } else {
+      isRelogNeededByCommunity = false;
+    }
   } catch (error) {
     console.log(error);
     mainWindow.webContents.send('console-error', `appStatusDemon error ${error}`)
@@ -318,12 +340,11 @@ async function appStatusDemon(timeout: number) {
     console.log(error);
     mainWindow.webContents.send('console-error', error)
   }
-  if (!timeout) {
-    timeout = 1 * 60 * 1000;
+  if (timeout) {
+    setTimeout(() => {
+      appStatusDemon(timeout);
+    }, timeout);
   }
-  setTimeout(() => {
-    appStatusDemon(timeout);
-  }, timeout);
 }
 
 async function tradingDemon() {
@@ -331,7 +352,9 @@ async function tradingDemon() {
     if (client && client.client && client.client.loggedOn) {
       let trades = await getTrades(botSteamId);
       mainWindow.webContents.send('trades-update', trades);
-      mainWindow.webContents.send('console-log', `Got ${trades && trades.length || 0} trades in bets4pro API`);
+      if (trades && trades.length){
+        mainWindow.webContents.send('console-log', `Got ${trades && trades.length || 0} trades in bets4pro API`);
+      }
       if (trades) {
         currentTradesInApi = trades;
         for (let i = 0; i < trades.length; i++) {
@@ -349,12 +372,15 @@ async function tradingDemon() {
             let isCommunityLoggedIn = await getIsCommunityLoggedIn(community);
             if (!isCommunityLoggedIn) {
               mainWindow.webContents.send('console-log', `Can't send trades isCommunityLoggedIn: ${isCommunityLoggedIn}`);
-              client.client.loggedOn = false;
-              setTimeout(tradingDemon.bind(null), 15000);
+              isRelogNeededByCommunity = true;
+              relogginDemon(0);
               return;
+            } else {
+              isRelogNeededByCommunity = false;
             }
           } else {
             mainWindow.webContents.send('console-log', `Can't send trade ${trade.trade_id} steamClient loggedOn ${client && client.client && client.client.loggedOn}`);            
+            relogginDemon(0);
             continue;
           }
           createTradeoffer(trade);
@@ -392,7 +418,7 @@ function createTradeoffer(trade: any) {
       mainWindow.webContents.send('console-error', `ERROR getting escrow ${err.name} \n ${err.message} \n ${err.stack}`);
       offer.data('error', err.message);
       mainWindow.webContents.send('console-log', sentTrades);
-      //TODO: чет я тут непонятное наворотил, он же всегда в массиве отправленых будет
+      //TODO: чет я тут непонятное наворотил, он же всегда в массиве отправленых будет, при такой ошибке трейд не репортит но и ничего не делает
       var index = sentTrades.indexOf(trade);
       if (index > -1) {
         sentTrades.splice(index, 1);

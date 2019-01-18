@@ -18,6 +18,7 @@ vex.defaultOptions.className = 'vex-theme-os';
     <p>
       <button (click)="login()">login</button>
       <button (click)="relog()">relog</button>
+      <button (click)="test()">test</button>
     </p>
     <p>trades: {{trades.length}}</p>
     <p>{{trades | json}}</p>
@@ -75,7 +76,6 @@ init_messages (){
     }
     this.trades = trades;
     this.ref.tick();
-    console.log(`trades-update ${this.trades}`);
   });
 }
   
@@ -85,6 +85,9 @@ init_messages (){
   }
   relog() {
     ipcRenderer.send('relog-steam', {});
+  }
+  test() {
+    ipcRenderer.send('test-steam', {});
   }
 }
 
