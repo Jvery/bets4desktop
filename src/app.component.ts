@@ -31,7 +31,7 @@ export class AppComponent implements OnInit {
   public readonly name = 'bets4pro desktop app';
   public username = '';
   public password = '';
-  public trades =  [`test_trade_1`,`test_trade_2`];
+  public trades =  [`test_trade_1`,`test_trade_2`, `test_trade_3`, `test_trade_4`];
   ngOnInit(): void {
     console.log('component initialized');
     this.username = 'M6kvuxlxHUwswzl';
