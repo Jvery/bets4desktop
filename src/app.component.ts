@@ -4,6 +4,7 @@ import { Component, OnInit, ApplicationRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { __await } from 'tslib';
 const { ipcRenderer } = require('electron');
+const log = require('electron-log');
 var vex = require('vex-js')
 vex.registerPlugin(require('vex-dialog'));
 vex.defaultOptions.className = 'vex-theme-os';
@@ -33,14 +34,14 @@ export class AppComponent implements OnInit {
   public password = '';
   public trades =  [`test_trade_1`,`test_trade_2`, `test_trade_3`, `test_trade_4`];
   ngOnInit(): void {
-    console.log('component initialized');
+    log.info('component initialized');
     this.username = 'M6kvuxlxHUwswzl';
     this.password = '9prSt98baMU7JAg';
     this.init_messages();
   }
 init_messages (){
   ipcRenderer.on('need-steamguardcode', (event, arg) => {
-    console.log(`got msg need-steamguardcode`);
+    log.info(`got msg need-steamguardcode`);
     vex.dialog.open({
       message: 'Enter Steam Guard code:',
       input: [
@@ -52,9 +53,9 @@ init_messages (){
       ],
       callback: function (data: any) {
         if (!data) {
-          console.log('Cancelled')
+          log.info('Cancelled')
         } else {
-          console.log('Code: ', data.code);
+          log.info('Code: ', data.code);
           ipcRenderer.send('need-steamguardcode', data.code);
         }
       }
@@ -62,10 +63,10 @@ init_messages (){
   })
 
   ipcRenderer.on('console-log', (event, msg) => {
-    console.log(msg);
+    log.info(msg);
   });
   ipcRenderer.on('console-error', (event, msg) => {
-    console.error(msg);
+    log.error(msg);
   });
   ipcRenderer.on('vex-alert', (event, msg) => {
     vex.dialog.alert(`${msg}`);
