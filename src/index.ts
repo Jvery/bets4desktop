@@ -28,7 +28,7 @@ const createWindow = async () => {
 
   // Open the DevTools.
   // if (isDevMode) {
-    mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
   // }
 
   // Emitted when the window is closed.
@@ -37,7 +37,9 @@ const createWindow = async () => {
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
     log.info(`removing listeners, closing main window ${mainWindow}`);
-    mainWindow.removeAllListeners('close');
+    if (mainWindow) {
+      mainWindow.removeAllListeners('close');
+    }
     mainWindow = null;
   });
 };
@@ -51,8 +53,8 @@ app.on('window-all-closed', async () => {
   log.info(`stopping app`);
   log.info(botSteamId);
   if (botSteamId) {
-   let result = await bets4proReportAppStatus(botSteamId, 2);
-   log.info(result);
+    let result = await bets4proReportAppStatus(botSteamId, 2);
+    log.info(result);
   }
   // On OS X it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
@@ -88,26 +90,23 @@ let SteamUser = require('steam-user');
 let SteamCommunity = require('steamcommunity');
 let SteamTotp = require('steam-totp');
 let TradeOfferManager = require('steam-tradeoffer-manager');
-let fs = require('fs');
 let request = require('request');
-let winston = require('winston');
-let Bottleneck = require("bottleneck");
 
 
 
-ipcMain.on('login-steam', (event, args) => {
+ipcMain.on('login-steam', (event: any, args: any) => {
   log.info(`received login-steam msg wtih args: ${JSON.stringify(args)}`);
   login(args.username, args.password);
 });
-ipcMain.on('relog-steam', (event, args) => {
+ipcMain.on('relog-steam', (event: any, args: any) => {
   log.info(`received relog-steam msg wtih args: ${JSON.stringify(args)}`);
   relog();
 });
-ipcMain.on('test-steam', (event, args) => {
+ipcMain.on('test-steam', (event: any, args: any) => {
   log.info(`received test-steam msg wtih args: ${JSON.stringify(args)}`);
-  log.info( `doing test`);
-  community.getWebApiKey('', (err, key)=>{
-    log.info( `test-steam result ${err} , ${key}`);
+  log.info(`doing test`);
+  community.getWebApiKey('', (err: any, key: any) => {
+    log.info(`test-steam result ${err} , ${key}`);
   });
 });
 
@@ -118,23 +117,25 @@ function login(username: string, password: string) {
     "password": password
   };
   try {
-    client.logOn(logOnOptions);    
+    client.logOn(logOnOptions);
   } catch (err) {
-    mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
+    if (mainWindow) {
+      mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
+    }
   }
 }
 
 function relog() {
-  log.info( `doing weblogon`);
+  log.info(`doing weblogon`);
   client.webLogOn();
 }
 
 let isRelogNeededByCommunity = false;
 let is_tradingDemon_started = false;
 let tradingDemonTimeout = 5000; //in ms
-let appstatusDemonTimeout = 1*60*1000; //in ms
-let minTimeBetweenRelogsInMs = 1000*60*2; //in ms
-let relogginDemonTimeoutInMs = 1000*60; //in ms
+let appstatusDemonTimeout = 1 * 60 * 1000; //in ms
+let minTimeBetweenRelogsInMs = 1000 * 60 * 2; //in ms
+let relogginDemonTimeoutInMs = 1000 * 60; //in ms
 let botSteamId = "";
 let sentTrades: any[] = [];
 let currentTradesInApi: any;
@@ -155,9 +156,11 @@ let manager = new TradeOfferManager({
 //Emitted when an error occurs during logon. Also emitted if we're disconnected and autoRelogin is either disabled, or it's a fatal disconnect.
 // If this event isn't handled, the program will crash.
 // The SteamUser object's steamID property will still be defined when this is emitted. The Error object will have an eresult parameter which is a value from the EResult enum.
-client.on('error', function (err) {
-  log.info( `error ${err}`);
-  mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
+client.on('error', function (err: any) {
+  log.info(`error ${err}`);
+  if (mainWindow) {
+    mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
+  }
 });
 
 
@@ -167,133 +170,151 @@ client.on('error', function (err) {
 // Also emitted in response to a logOff() call.
 // The SteamUser object's steamID property will still be defined when this is emitted.
 // The eresult value might be 0 (Invalid), which indicates that the disconnection was due to the connection being closed directly, without Steam sending a LoggedOff message.
-client.on('disconnected', function (eresult, msg) {
-  log.info( `disconnected ${SteamUser.EResult[eresult]} ${msg}`);
-  mainWindow.webContents.send('vex-alert', `disconnected ${SteamUser.EResult[eresult]} ${msg}`);
-  //TODO: надо релогнуться
+client.on('disconnected', function (eresult: any, msg: any) {
+  log.info(`disconnected ${SteamUser.EResult[eresult]} ${msg}`);
+  if (mainWindow){
+    mainWindow.webContents.send('vex-alert', `disconnected ${SteamUser.EResult[eresult]} ${msg}`);
+  }
+  //TODO: надо релогнуться?
 });
 
-//TODO: возможно стоит релогать 
-manager.on('sessionExpired', err => {
+manager.on('sessionExpired', (err: any) => {
   if (err) {
     log.info(err);
     log.error(`ERROR manager session expired ${err.name} \n ${err.message} \n ${err.stack}`);
   }
-  log.info( `Session manager expired need relog...`);
+  log.info(`Session manager expired need relog...`);
   relogginDemon(0);
 })
 
-community.on('sessionExpired', err => {
+community.on('sessionExpired', (err: any) => {
   if (err) {
     log.info(err);
     log.error(`ERROR community session expired ${err.name} \n ${err.message} \n ${err.stack}`);
   }
-  log.info( `Session community expired need relog...`);
+  log.info(`Session community expired need relog...`);
 })
 
 //залогинились, но пока не до конца
-client.on('loggedOn', function (details, parental) {
-  log.info( `loggedOn ${details} ${parental}`)
+client.on('loggedOn', function (details: any, parental: any) {
+  log.info(`loggedOn ${details} ${parental}`)
   botSteamId = "" + client && client.client && client.client.steamID;
-  log.info( `steamId ${botSteamId}`);
+  log.info(`steamId ${botSteamId}`);
 });
 
 //получили стимгвард, просим ввести код
-client.on('steamGuard', function (domain, callback) {
-  log.info( `need steamGuard code`);
-
+client.on('steamGuard', function (domain: any, callback: any) {
+  log.info(`need steamGuard code`);
+if (mainWindow){
   mainWindow.webContents.send('need-steamguardcode', '');
-
-  ipcMain.once('need-steamguardcode', (event, code) => {
+}
+  ipcMain.once('need-steamguardcode', (event: any, code: any) => {
     if (code == " ") {//TODO: remove autocode
       code = SteamTotp.generateAuthCode("rVQKM57LSiBfwWQPnh+lHvSNoeY=");
     }
-    log.info( `received code: ${code}`);
+    log.info(`received code: ${code}`);
     callback(code);
   });
 });
 
-//TODO: trycatch
 //окончательно залогинились, получили сессию
-client.on('webSession', function (sessionID, cookies) {
-  log.info( `webSession ${sessionID} ${cookies}`);
-  manager.setCookies(cookies, async function (err: any) {
-    if (err) {
-      log.info(err);
-      log.error(`ERROR setCookies ${err.name} \n ${err.message} \n ${err.stack}`);
-      mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
-      return;
-    }
-    log.info( "Bot API key: " + manager.apiKey);
-    if (botSteamId && manager && manager.apiKey) {
-      sendApiKey(botSteamId, manager.apiKey);
-    } else {
-      log.info( `webSession not logged in properly ${botSteamId} ${manager.apiKey}`)
-      return;
-    }
-    //залогинились
-    if (!is_tradingDemon_started) {
-      is_tradingDemon_started = true;
-      let trades = await getTrades(botSteamId);
-      currentTradesInApi = trades;
-      tradingDemon();
-      appStatusDemon(appstatusDemonTimeout);
-      relogginDemon(relogginDemonTimeoutInMs);
-    }
-  });
-  community.setCookies(cookies);//no need to set cookies here
-});
-
-
-//TODO: try catch
-manager.on('sentOfferChanged', function (offer, oldState) {
-  log.info( `TradeId ${offer.data('trade_id')} offer #${offer.id} changed: ${TradeOfferManager.ETradeOfferState[oldState]} -> ${TradeOfferManager.ETradeOfferState[offer.state]}`);
-  if (offer.state === 2 || offer.state === 9) { //активный трейд - 2 или ждет подтверждения 9
-    //это может быть активный трейд с предыдущей сессии
-    if (sentTrades.findIndex(trade => trade.trade_id === offer.data('trade_id')) === -1) {
-      log.info( `Added ${offer.data('trade_id')} to sentTrades array coz found it in active state`);
-      sentTrades.push({
-        trade_id: offer.data('trade_id'),
-        trade_created_time: Date.now()
-      });
-    }
-    return;
-  } else if (offer.state === 3) { //успешный трейд
-    reportTradeByOfferAndStatus(offer, 1);
-    //TODO:егор должен проверять успешность у себя чтоб не подделывали запросы
-  } else { //TODO: проверка всех статусов отмены
-    reportTradeByOfferAndStatus(offer, 2);
+client.on('webSession', function (sessionID: any, cookies: any) {
+  try {
+    log.info(`webSession ${sessionID} ${cookies}`);
+    manager.setCookies(cookies, async function (err: any) {
+      try {
+        if (err) {
+          log.info(err);
+          log.error(`ERROR setCookies ${err.name} \n ${err.message} \n ${err.stack}`);
+          if (mainWindow){
+            mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
+          }
+          return;
+        }
+        log.info("Bot API key: " + manager.apiKey);
+        if (botSteamId && manager && manager.apiKey) {
+          sendApiKey(botSteamId, manager.apiKey);
+        } else {
+          log.info(`webSession not logged in properly ${botSteamId} ${manager.apiKey}`)
+          return;
+        }
+        //залогинились
+        if (!is_tradingDemon_started) {
+          is_tradingDemon_started = true;
+          let trades = await getTrades(botSteamId);
+          currentTradesInApi = trades;
+          tradingDemon();
+          appStatusDemon(appstatusDemonTimeout);
+          relogginDemon(relogginDemonTimeoutInMs);
+        }
+      } catch (error) {
+        log.error(`manager.setCookies ${error}`);
+      }
+    });
+    community.setCookies(cookies);//no need to set cookies here    
+  } catch (error) {
+    log.error(`client on webSession ${error}`);
   }
 });
 
-manager.on('unknownOfferSent', function (offer) {
+
+manager.on('sentOfferChanged', function (offer: any, oldState: any) {
   try {
-    log.info( `unknownOfferSent #${offer.id} trade_id ${offer.data('trade_id')} message ${offer.message}`);
+    log.info(`TradeId ${offer.data('trade_id')} offer #${offer.id} changed: ${TradeOfferManager.ETradeOfferState[oldState]} -> ${TradeOfferManager.ETradeOfferState[offer.state]}`);
+    if (offer.state === 2 || offer.state === 9) { //активный трейд - 2 или ждет подтверждения 9
+      //это может быть активный трейд с предыдущей сессии
+      if (sentTrades.findIndex(trade => trade.trade_id === offer.data('trade_id')) === -1) {
+        log.info(`Added ${offer.data('trade_id')} to sentTrades array coz found it in active state`);
+        sentTrades.push({
+          trade_id: offer.data('trade_id'),
+          trade_created_time: Date.now()
+        });
+      }
+      return;
+    } else if (offer.state === 3) { //successful trade
+      reportTradeByOfferAndStatus(offer, 1);
+    } else { //all other are canceled trades
+      reportTradeByOfferAndStatus(offer, 2);
+    }
+  } catch (error) {
+    log.error(`sentOfferChanged ${error}`);
+  }
+});
+
+manager.on('unknownOfferSent', function (offer: any) {
+  try {
+    log.info(`unknownOfferSent #${offer.id} trade_id ${offer.data('trade_id')} message ${offer.message}`);
     offer.data('error', 'unknownOffer');
     if (!currentTradesInApi) {
-      log.info( `unknownOfferSent no trades in currentTradesInApi`);
+      log.info(`unknownOfferSent no trades in currentTradesInApi`);
       return;
     }
-    let foundTrade = currentTradesInApi.find(trade => trade.bot_id === botSteamId && offer.message === `Protection Code: ${trade.protection_code}`);
+    let foundTrade = currentTradesInApi.find((trade: any) => trade.bot_id === botSteamId && offer.message === `Protection Code: ${trade.protection_code}`);
     if (foundTrade) {
-      log.info( `Found trade in api for offer #${offer.id}, setting trade_id to ${foundTrade.trade_id}`);
+      log.info(`Found trade in api for offer #${offer.id}, setting trade_id to ${foundTrade.trade_id}`);
       offer.data('trade_id', foundTrade.trade_id);
     } else {
-      log.info( `Can't find offer #${offer.id} in currentTradesInApi`);
+      log.info(`Can't find offer #${offer.id} in currentTradesInApi`);
     }
   } catch (error) {
-    log.info(error);
+
     log.error(error);
   }
 });
 
-manager.on('newOffer', function (offer) {
+manager.on('newOffer', function (offer: any) {
   try {
-    //TODO: проверяем на обманные трейды и отменяем их
-    log.info( `got new offer ${JSON.stringify(offer)}`);
+    //TODO: проверяем на обманные трейды и отменяем их, переделать наши покупки с маркета не отменяло, надо в массиве сенттрейдс искать трейд для отмены по прот коду
+    log.info(`got new offer ${JSON.stringify(offer)}`);
+    if (offer.message.indexOf(`Protection Code:`) != -1) {
+      //fake trade, canceling
+      log.info(`fake offer ${offer} canceling`);
+      offer.cancel((err: any) => {
+        log.info(`offer cancel ${offer} error: ${err}`)
+      })
+    }
   } catch (error) {
-    log.info(error);
-    log.error(error);
+    log.info(`newOffer ${offer} error: ${error}`)
   }
 });
 
@@ -301,20 +322,20 @@ let lastRelogTimeInMs = (new Date()).getTime();
 
 async function relogginDemon(timeout: number) {
   try {
-    log.info( `relogginDemon started`);
+    log.info(`relogginDemon started`);
     let currentTimeInMs = (new Date()).getTime();
-    if (!(client && client.client && client.client.loggedOn) || isRelogNeededByCommunity){
-      log.info( `relogginDemon need relog!`);
-      if (currentTimeInMs-lastRelogTimeInMs>minTimeBetweenRelogsInMs){
+    if (!(client && client.client && client.client.loggedOn) || isRelogNeededByCommunity) {
+      log.info(`relogginDemon need relog!`);
+      if (currentTimeInMs - lastRelogTimeInMs > minTimeBetweenRelogsInMs) {
         //sending request to receive error and relog
-        community.getWebApiKey('', (err, key) => {
-          log.info( `getWebApiKey from trading demon result ${err} , ${key}`);
-          log.info( `relogginDemon calling weblogon`);
+        community.getWebApiKey('', (err: any, key: any) => {
+          log.info(`getWebApiKey from trading demon result ${err} , ${key}`);
+          log.info(`relogginDemon calling weblogon`);
           isRelogNeededByCommunity = false;
           client.webLogOn();
         });
       } else {
-        log.info( `relogginDemon cant relog coz time ${currentTimeInMs}-${lastRelogTimeInMs}>${minTimeBetweenRelogsInMs}`);
+        log.info(`relogginDemon cant relog coz time ${currentTimeInMs}-${lastRelogTimeInMs}>${minTimeBetweenRelogsInMs}`);
       }
     }
   } catch (error) {
@@ -331,22 +352,20 @@ async function appStatusDemon(timeout: number) {
   let isClientLoggedIn = client && client.client && client.client.loggedOn;
   try {
     isCommunityLoggedIn = await getIsCommunityLoggedIn(community);
-    if (!isCommunityLoggedIn){
+    if (!isCommunityLoggedIn) {
       isRelogNeededByCommunity = true;
       relogginDemon(0);
     } else {
       isRelogNeededByCommunity = false;
     }
   } catch (error) {
-    log.info(error);
     log.error(`appStatusDemon error ${error}`)
   }
   try {
-    log.info( `reporting appstatus: steamid ${botSteamId} isClientLoggedIn ${isClientLoggedIn} isCommunityLoggedIn ${isCommunityLoggedIn}  status ${isCommunityLoggedIn&&isClientLoggedIn ? 1 : 0}`)
-    let result = await bets4proReportAppStatus(botSteamId, isCommunityLoggedIn&&isClientLoggedIn ? 1 : 0);
-    log.info( `appStatusDemon result: ${JSON.stringify(result)}`)
+    log.info(`reporting appstatus: steamid ${botSteamId} isClientLoggedIn ${isClientLoggedIn} isCommunityLoggedIn ${isCommunityLoggedIn}  status ${isCommunityLoggedIn && isClientLoggedIn ? 1 : 0}`)
+    let result = await bets4proReportAppStatus(botSteamId, isCommunityLoggedIn && isClientLoggedIn ? 1 : 0);
+    log.info(`appStatusDemon result: ${JSON.stringify(result)}`)
   } catch (error) {
-    log.info(error);
     log.error(error)
   }
   if (timeout) {
@@ -360,9 +379,11 @@ async function tradingDemon() {
   try {
     if (client && client.client && client.client.loggedOn) {
       let trades = await getTrades(botSteamId);
-      mainWindow.webContents.send('trades-update', trades);
-      if (trades && trades.length){
-        log.info( `Got ${trades && trades.length || 0} trades in bets4pro API`);
+      if (mainWindow){
+        mainWindow.webContents.send('trades-update', trades);
+      }
+      if (trades && trades.length) {
+        log.info(`Got ${trades && trades.length || 0} trades in bets4pro API`);
       }
       if (trades) {
         currentTradesInApi = trades;
@@ -374,13 +395,13 @@ async function tradingDemon() {
           if (trade.status != 0 ||
             trade.seller_data.steamid != botSteamId ||
             sentTrades.findIndex(sent_trade => sent_trade.trade_id == trade.trade_id) != -1) {
-            log.info( `no need to create trade ${JSON.stringify(trade)}`);
+            log.info(`no need to create trade ${JSON.stringify(trade)}`);
             continue;
           }
           if (client && client.client && client.client.loggedOn) {
             let isCommunityLoggedIn = await getIsCommunityLoggedIn(community);
             if (!isCommunityLoggedIn) {
-              log.info( `Can't send trades isCommunityLoggedIn: ${isCommunityLoggedIn}`);
+              log.info(`Can't send trades isCommunityLoggedIn: ${isCommunityLoggedIn}`);
               isRelogNeededByCommunity = true;
               relogginDemon(0);
               return;
@@ -388,7 +409,7 @@ async function tradingDemon() {
               isRelogNeededByCommunity = false;
             }
           } else {
-            log.info( `Can't send trade ${trade.trade_id} steamClient loggedOn ${client && client.client && client.client.loggedOn}`);            
+            log.info(`Can't send trade ${trade.trade_id} steamClient loggedOn ${client && client.client && client.client.loggedOn}`);
             relogginDemon(0);
             continue;
           }
@@ -396,10 +417,9 @@ async function tradingDemon() {
         }
       }
     } else {
-      log.info( `trading demon not logged in`);
+      log.info(`trading demon not logged in`);
     }
   } catch (error) {
-    log.info(error);
     log.error(`tradingDemon ${error}`)
   } finally {
     setTimeout(tradingDemon.bind(null), tradingDemonTimeout);
@@ -409,7 +429,7 @@ async function tradingDemon() {
 function createTradeoffer(trade: any) {
   trade.trade_created_time = Date.now();
   sentTrades.push(trade);
-  log.info( `Added ${trade.trade_id} to sentTrades array, creating offer`);
+  log.info(`Added ${trade.trade_id} to sentTrades array, creating offer`);
   let offer = manager.createOffer(new TradeOfferManager.SteamID(trade.buyer_data.steamid), trade.buyer_data.trade_url);
   offer.data('trade_id', trade.trade_id);
   offer.setMessage('Protection Code: ' + trade.protection_code);
@@ -426,7 +446,7 @@ function createTradeoffer(trade: any) {
       log.info(err);
       log.error(`ERROR getting escrow ${err.name} \n ${err.message} \n ${err.stack}`);
       offer.data('error', err.message);
-      log.info( sentTrades);
+      log.info(sentTrades);
       //TODO: чет я тут непонятное наворотил, он же всегда в массиве отправленых будет, при такой ошибке трейд не репортит но и ничего не делает
       var index = sentTrades.indexOf(trade);
       if (index > -1) {
@@ -434,11 +454,11 @@ function createTradeoffer(trade: any) {
       } else {
         reportTradeByOfferAndStatus(offer, 2);
       }
-      log.info( sentTrades);
+      log.info(sentTrades);
       return;
     } else {
       if (me.escrowDays !== 0 || them.escrowDays !== 0) {
-        log.info( 'escrow here. them:' + them.escrowDays + " me:" + me.escrowDays);
+        log.info('escrow here. them:' + them.escrowDays + " me:" + me.escrowDays);
         offer.data('error', `Escrow. Me: ${me.escrowDays} Them: ${them.escrowDays}`);
         reportTradeByOfferAndStatus(offer, 3);
         return;
@@ -448,17 +468,17 @@ function createTradeoffer(trade: any) {
             log.info(err);
             log.error(`ERROR sending offer ${err.name} \n ${err.message} \n ${err.stack}`);
             offer.data('error', err.message);
-            log.info( `Offer #${offer && offer.id} tradeid ${trade && trade.trade_id} will be reported as unsucceful in 3min`);
+            log.info(`Offer #${offer && offer.id} tradeid ${trade && trade.trade_id} will be reported as unsucceful in 3min`);
             setTimeout(reportTradeByOfferAndStatus.bind(null, offer, 5), 180000); //репортим через 3 минут если этот трейд не отрепортится сам черз поллдату
             //TODO: возможно нужно проверять этот оффер в поллдате
             return;
           } else {
             reportTradeByOfferAndStatus(offer, 0);
             if (status == 'pending') {
-              log.info( `now need confirm offer. status: ${status} Offer #${offer.id}`)
+              log.info(`now need confirm offer. status: ${status} Offer #${offer.id}`)
               return;
             } else {
-              log.info( `Offer #${offer.id} tradeid ${trade.trade_id} sent successfully`);
+              log.info(`Offer #${offer.id} tradeid ${trade.trade_id} sent successfully`);
               return;
             }
           }
@@ -472,10 +492,9 @@ async function sendApiKey(steamId: any, apiKey: any) {
   let result = '';
   try {
     result = await bets4proSaveApiKey(steamId, apiKey);
-    log.info( `sendApiKey result ${JSON.stringify(result)}`);
+    log.info(`sendApiKey result ${JSON.stringify(result)}`);
   } catch (error) {
-    log.info(error);
-    log.error(error);
+    log.error(`sendApiKey ${error}`);
   }
   //report until success
   if (result.indexOf("ok_ok_ok") === -1) {
@@ -486,7 +505,7 @@ async function sendApiKey(steamId: any, apiKey: any) {
 }
 
 async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
-  let result = {};
+  let result = '';
   try {
     let o_tradeoffer_id = 0;
     let o_trade_id = 0;
@@ -499,16 +518,15 @@ async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
       o_error = tradeoffer.data('error');
     }
     if (o_trade_id) {
-      log.info( `reportTradeByOfferAndStatus trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error}`);
+      log.info(`reportTradeByOfferAndStatus trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error}`);
       result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error);
-      log.info( `reportTradeByOfferAndStatus result ${JSON.stringify(result)}`);
+      log.info(`reportTradeByOfferAndStatus result ${JSON.stringify(result)}`);
     } else {
-      log.info( `can't report without trade_id `); //${JSON.stringify(tradeoffer)}
+      log.info(`can't report without trade_id `); //${JSON.stringify(tradeoffer)}
       return;
     }
   } catch (error) {
-    log.info(error);
-    log.error(error);
+    log.error(`reportTradeByOfferAndStatus ${error}`);
   }
   //report until success
   if (result.indexOf("ok_ok_ok") === -1) {
@@ -526,11 +544,10 @@ async function getTrades(botSteamId: any) {
       return trades;
     }
   } catch (error) {
-    log.info(error);
     log.error(`getTrades ${error}`);
   }
 }
-function bets4proGetTradesRequest(botSteamId: any) {
+function bets4proGetTradesRequest(botSteamId: any): Promise<string> {
   return new Promise(function (resolve, reject) {
     request.post({
       url: "http://api.bets4.pro/api_user_trades.php ",
@@ -538,7 +555,7 @@ function bets4proGetTradesRequest(botSteamId: any) {
         steamid: botSteamId
       }
     },
-      function (error, response, body) {
+      function (error: any, response: any, body: any) {
         if (error) {
           reject(error);
         } else {
@@ -548,7 +565,7 @@ function bets4proGetTradesRequest(botSteamId: any) {
   });
 }
 
-function bets4proSaveApiKey(botSteamId: any, apiKey: any) {
+function bets4proSaveApiKey(botSteamId: any, apiKey: any): Promise<string> {
   return new Promise(function (resolve, reject) {
     request.post({
       url: "http://api.bets4.pro/user_trades_apikey_post.php ",
@@ -557,7 +574,7 @@ function bets4proSaveApiKey(botSteamId: any, apiKey: any) {
         api_key_seller: apiKey
       }
     },
-      function (error, response, body) {
+      function (error: any, response: any, body: any) {
         if (error) {
           reject(error);
         } else {
@@ -568,7 +585,7 @@ function bets4proSaveApiKey(botSteamId: any, apiKey: any) {
 }
 
 
-function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any) {
+function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any): Promise<string> {
   return new Promise(function (resolve, reject) {
     request.post({
       url: "http://api.bets4.pro/user_trades_post.php",
@@ -580,7 +597,7 @@ function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, 
         error: errorMessage
       }
     },
-      function (error, response, body) {
+      function (error: any, response: any, body: any) {
         if (error) {
           reject(error);
         } else {
@@ -599,7 +616,7 @@ function bets4proReportAppStatus(steamid: any, app_status: number) {
         app_status: app_status
       }
     },
-      function (error, response, body) {
+      function (error: any, response: any, body: any) {
         if (error) {
           reject(error);
         } else {
@@ -609,9 +626,9 @@ function bets4proReportAppStatus(steamid: any, app_status: number) {
   });
 }
 
-function getIsCommunityLoggedIn(community) {
+function getIsCommunityLoggedIn(community: any): Promise<boolean> {
   return new Promise(function (resolve, reject) {
-    community.loggedIn(function (err, loggedIn, familyView) {
+    community.loggedIn(function (err: any, loggedIn: any, familyView: any) {
       if (err) {
         reject(err);
       } else {
