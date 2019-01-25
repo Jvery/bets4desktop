@@ -50,12 +50,19 @@ app.on('ready', createWindow);
 
 // Quit when all windows are closed.
 app.on('window-all-closed', async () => {
-  log.info(`stopping app`);
-  log.info(botSteamId);
-  if (botSteamId) {
-    let result = await bets4proReportAppStatus(botSteamId, 2);
-    log.info(result);
+  try {
+    log.info(`stopping app ${botSteamId}`);
+    if (botSteamId) {
+      let result = await bets4proReportAppStatus(botSteamId, 2);
+      log.info(`appstatus closing report 2 ${result}`);
+    }
+    isClosingApp = true;
+    manager.shutdown();
+    log.info(`manager shutdown`);
+  } catch (error) {
+    log.error(`closing ${error}`);
   }
+
   // On OS X it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
@@ -84,7 +91,7 @@ app.on('activate', () => {
 //   event.returnValue = 'pong'
 // })
 
-
+let isClosingApp = false;
 let SteamClient = require('steam-client');
 let SteamUser = require('steam-user');
 let SteamCommunity = require('steamcommunity');
@@ -321,6 +328,10 @@ manager.on('newOffer', function (offer: any) {
 let lastRelogTimeInMs = (new Date()).getTime();
 
 async function relogginDemon(timeout: number) {
+  if (isClosingApp) {
+    log.info(`relogginDemon stopped coz closing`);
+    return;
+  }
   try {
     log.info(`relogginDemon started`);
     let currentTimeInMs = (new Date()).getTime();
@@ -329,10 +340,21 @@ async function relogginDemon(timeout: number) {
       if (currentTimeInMs - lastRelogTimeInMs > minTimeBetweenRelogsInMs) {
         //sending request to receive error and relog
         community.getWebApiKey('', (err: any, key: any) => {
-          log.info(`getWebApiKey from trading demon result ${err} , ${key}`);
-          log.info(`relogginDemon calling weblogon`);
-          isRelogNeededByCommunity = false;
-          client.webLogOn();
+          try {
+            log.info(`getWebApiKey from trading demon result ${err} , ${key}`);
+            log.info(`relogginDemon calling weblogon`);
+            isRelogNeededByCommunity = false;
+            //node-steam-user Being connected is the same thing as being logged on (not the same as being logged onto the web, but if your client session drops then so does your web session). If you're not connected, the steamID property will be null.
+            //TODO: может вылетать с ошибкой если к стиму не подключено, тогда стимайди будет null, тогда надо релог руками
+            if (client.steamID) {
+              client.webLogOn();
+            } else {
+              log.error(`relogginDemon can't relog client.steamID ${client.steamID}`)
+              //need manual relog?
+            }
+          } catch (error) {
+            log.error(`relogginDemon ${error}`);
+          }
         });
       } else {
         log.info(`relogginDemon cant relog coz time ${currentTimeInMs}-${lastRelogTimeInMs}>${minTimeBetweenRelogsInMs}`);
@@ -348,6 +370,10 @@ async function relogginDemon(timeout: number) {
 }
 
 async function appStatusDemon(timeout: number) {
+  if (isClosingApp) {
+    log.info(`appStatusDemon stopped coz closing`);
+    return;
+  }
   let isCommunityLoggedIn = false;
   let isClientLoggedIn = client && client.client && client.client.loggedOn;
   try {
@@ -376,6 +402,10 @@ async function appStatusDemon(timeout: number) {
 }
 
 async function tradingDemon() {
+  if (isClosingApp) {
+    log.info(`tradingDemon stopped coz closing`);
+    return;
+  }
   try {
     if (client && client.client && client.client.loggedOn) {
       let trades = await getTrades(botSteamId);
