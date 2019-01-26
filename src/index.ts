@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { enableLiveReload } from 'electron-compile';
+import { JsonPipe } from '@angular/common';
 const log = require('electron-log');
 // Write to this file, must be set before first logging
 log.transports.file.level = 'debug';
@@ -290,21 +291,25 @@ manager.on('sentOfferChanged', function (offer: any, oldState: any) {
 
 manager.on('unknownOfferSent', function (offer: any) {
   try {
-    log.info(`unknownOfferSent #${offer.id} trade_id ${offer.data('trade_id')} message ${offer.message}`);
-    offer.data('error', 'unknownOffer');
-    if (!currentTradesInApi) {
-      log.info(`unknownOfferSent no trades in currentTradesInApi`);
+    if (offer.message.indexOf(`Protection Code:`) == -1) {
       return;
     }
-    let foundTrade = currentTradesInApi.find((trade: any) => trade.bot_id === botSteamId && offer.message === `Protection Code: ${trade.protection_code}`);
+    log.info(`unknownOfferSent #${offer.id} trade_id ${offer.data('trade_id')} message ${offer.message}`);
+    //log.info(`${JSON.stringify(offer)}`);
+    offer.data('error', 'unknownOffer');
+    // if (!currentTradesInApi) {
+    //   log.info(`unknownOfferSent no trades in currentTradesInApi`);
+    //   return;
+    // }
+    let foundTrade = currentTradesInApi && currentTradesInApi.find((trade: any) => trade.bot_id === botSteamId && offer.message === `Protection Code: ${trade.protection_code}`);
     if (foundTrade) {
       log.info(`Found trade in api for offer #${offer.id}, setting trade_id to ${foundTrade.trade_id}`);
       offer.data('trade_id', foundTrade.trade_id);
     } else {
-      log.info(`Can't find offer #${offer.id} in currentTradesInApi`);
+      log.info(`Can't find offer with message ${offer.message} in currentTradesInApi reporting by prot code`);
+      reportTradeByOfferAndStatus(offer,-1);
     }
   } catch (error) {
-
     log.error(error);
   }
 });
@@ -534,6 +539,17 @@ async function sendApiKey(steamId: any, apiKey: any) {
   }
 }
 
+// 1 	Invalid
+// 2 	This trade offer has been sent, neither party has acted on it yet.
+// 3 	The trade offer was accepted by the recipient and items were exchanged.
+// 4 	The recipient made a counter offer
+// 5 	The trade offer was not accepted before the expiration date
+// 6 	The sender cancelled the offer
+// 7 	The recipient declined the offer
+// 8 	Some of the items in the offer are no longer available (indicated by the missing flag in the output)
+// 9 	The offer hasn't been sent yet and is awaiting email/mobile confirmation. The offer is only visible to the sender.
+// 10 	Either party canceled the offer via email/mobile. The offer is visible to both parties, even if the sender canceled it before it was sent.
+// 11 	The trade has been placed on hold. The items involved in the trade have all been removed from both parties' inventories and will be automatically delivered in the future. 
 async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
   let result = '';
   try {
@@ -541,18 +557,41 @@ async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
     let o_trade_id = 0;
     let o_tradeoffer_status = 0;
     let o_error = "";
+    let o_protectionCode = "";
     if (tradeoffer) {
-      o_trade_id = tradeoffer.data('trade_id');
+      let tradeStatusByOffer = 0;
+      switch (tradeoffer.state) {
+        case 2:
+          tradeStatusByOffer = 0;
+          break;
+        case 3:
+          tradeStatusByOffer = 1;
+          break;
+        case 9:
+          tradeStatusByOffer = 0;
+          break;
+        default:
+          tradeStatusByOffer = 2;
+      }
+      if (tradeStatus != tradeStatusByOffer) {
+        log.info(`reportTradeByOfferAndStatus wrong tradeStatus ${tradeStatus} -> ${tradeStatusByOffer}`);
+        tradeStatus = tradeStatusByOffer;
+      }
+      if (tradeoffer.data('trade_id')) {
+        o_trade_id = tradeoffer.data('trade_id');
+      }
       o_tradeoffer_id = tradeoffer.id;
       o_tradeoffer_status = tradeoffer.state;
       o_error = tradeoffer.data('error');
+      o_protectionCode = tradeoffer.message.replace('Protection Code: ','');
     }
-    if (o_trade_id) {
-      log.info(`reportTradeByOfferAndStatus trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error}`);
+    if (o_trade_id || o_protectionCode) {
+      log.info(`reportTradeByOfferAndStatus trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error} ; code: ${o_protectionCode}`);
       result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error);
       log.info(`reportTradeByOfferAndStatus result ${JSON.stringify(result)}`);
-    } else {
-      log.info(`can't report without trade_id `); //${JSON.stringify(tradeoffer)}
+    }
+    else {
+      log.info(`can't report without trade_id and protection code`);
       return;
     }
   } catch (error) {
@@ -615,17 +654,19 @@ function bets4proSaveApiKey(botSteamId: any, apiKey: any): Promise<string> {
 }
 
 
-function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any): Promise<string> {
+function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any, protectionCode=''): Promise<string> {
   return new Promise(function (resolve, reject) {
+    let data = {
+      trade_id: tradeId,
+      status: tradeStatus,
+      tradeoffer_id: tradeofferId,
+      tradeoffer_state: tradeofferState,
+      error: errorMessage,
+      protection_code: protectionCode
+    }
     request.post({
       url: "http://api.bets4.pro/user_trades_post.php",
-      form: {
-        trade_id: tradeId,
-        status: tradeStatus,
-        tradeoffer_id: tradeofferId,
-        tradeoffer_state: tradeofferState,
-        error: errorMessage
-      }
+      form: data
     },
       function (error: any, response: any, body: any) {
         if (error) {
