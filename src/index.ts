@@ -84,15 +84,6 @@ app.on('activate', () => {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
 
-// ipcMain.on('asynchronous-message', (event, arg) => {
-//   log.info( arg) // prints "ping"
-//   event.sender.send('asynchronous-reply', 'pong')
-// })
-
-// ipcMain.on('synchronous-message', (event, arg) => {
-//   log.info( arg) // prints "ping"
-//   event.returnValue = 'pong'
-// })
 
 let isClosingApp = false;
 let SteamClient = require('steam-client');
