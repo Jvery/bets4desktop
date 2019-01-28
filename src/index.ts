@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { enableLiveReload } from 'electron-compile';
 import { JsonPipe } from '@angular/common';
+const fkill = require('fkill');
 const log = require('electron-log');
 // Write to this file, must be set before first logging
 log.transports.file.level = 'debug';
@@ -63,12 +64,13 @@ app.on('window-all-closed', async () => {
   } catch (error) {
     log.error(`closing ${error}`);
   }
-
   // On OS X it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
     app.quit();
   }
+  //windows
+  fkill(`bets4desktop`, true, true, true);
 });
 
 app.on('activate', () => {
