@@ -18,9 +18,10 @@ export class AppComponent implements OnInit {
   }
   //0 not logged in, 1 selling, -1 not selling
   public appState = 0;
+  public isLogginIn = false;
   public username = '';
   public password = '';
-  public trades = [`test_trade_1`, `test_trade_2`, `test_trade_3`, `test_trade_4`];
+  public trades = [];
   ngOnInit(): void {
     log.info('component initialized');
     this.username = 'M6kvuxlxHUwswzl';
@@ -49,7 +50,15 @@ export class AppComponent implements OnInit {
         }
       })
     })
-
+    ipcRenderer.on('isLogginIn', (event: any, msg: any) => {
+      log.info(`isLogginIn ${msg}`)
+      if (msg) {
+        this.isLogginIn = true;
+      } else {
+        this.isLogginIn = false;
+      }
+      this.ref.tick();
+    });
     ipcRenderer.on('vex-alert', (event: any, msg: any) => {
       vex.dialog.alert(`${msg}`);
     });
@@ -57,15 +66,18 @@ export class AppComponent implements OnInit {
       if (!trades) {
         trades = [];
       }
-      this.trades = trades;
-      //TODO: proper appstate via ipc
-      this.appState=1;
-      this.ref.tick();
+      if (this.trades!=trades){
+        this.trades = trades;
+        //TODO: proper appstate via ipc
+        this.appState = 1;
+        this.ref.tick();
+      }
     });
   }
 
 
   login() {
+    this.isLogginIn = true;
     ipcRenderer.send('login-steam', { username: this.username, password: this.password })
   }
   relog() {

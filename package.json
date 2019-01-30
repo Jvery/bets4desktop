@@ -13,7 +13,7 @@
     "lint": "tslint src"
   },
   "keywords": [],
-  "author": "wareze",
+  "author": "bets4pro",
   "license": "MIT",
   "config": {
     "forge": {

@@ -121,6 +121,7 @@ function login(username: string, password: string) {
     client.logOn(logOnOptions);
   } catch (err) {
     if (mainWindow) {
+      mainWindow.webContents.send('isLogginIn', false);
       mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
     }
   }
@@ -221,6 +222,9 @@ if (mainWindow){
 //окончательно залогинились, получили сессию
 client.on('webSession', function (sessionID: any, cookies: any) {
   try {
+    if (mainWindow){
+      mainWindow.webContents.send('isLogginIn', false);
+    }
     log.info(`webSession ${sessionID} ${cookies}`);
     manager.setCookies(cookies, async function (err: any) {
       try {

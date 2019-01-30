@@ -1,48 +1,99 @@
-<div class="container-fluid">
-    <form class="form-signin">
-        <div class="text-center">
-            <div class="row">
-                <div class="col-md-4 col-sm-12">
-                    <img class="img-fluid" src="img/logo.png" alt="Logo">
+<div class="container-fluid font-weight-light">
+    <div class="row">
+        <div class="col-4">
+            <form class="form-signin">
+                <div class="text-center">
+                    <div class="row">
+                        <div class="col-12">
+                            <img class="img-fluid" src="img/logo.png">
+                        </div>
+                        <div class="col-12">
+                            <h4>Bets4pro desktop app</h1>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div *ngIf="appState==0" class="alert alert-secondary col-10 offset-1" role="alert">
+                            Log in to start selling
+                        </div>
+                        <div *ngIf="appState==1" class="alert alert-success col-10 offset-1" role="alert">
+                            Selling is active
+                        </div>
+                        <div *ngIf="appState==-1" class="alert alert-danger col-10 offset-1" role="alert">
+                            Selling isn't active
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-8 col-sm-12">
-                    <h4>Bets4pro desktop app</h1>
+
+                <div class="form-label-group">
+                    <input [(ngModel)]="username" id="inputLogin" class="form-control" placeholder="Login" name="Login"
+                        required="" autofocus="">
+                    <label for="inputLogin">Login</label>
+                </div>
+
+                <div class="form-label-group">
+                    <input [(ngModel)]="password" (keyup.enter)="login()" type="password" id="inputPassword" class="form-control"
+                        placeholder="Password" name="Password" required="">
+                    <label for="inputPassword">Password</label>
+                </div>
+
+                <button (click)="login()" class="btn btn-lg btn-primary btn-block">
+                    <i *ngIf="isLogginIn" class="fa fa-circle-o-notch fa-spin"></i>
+                    Sign in
+                </button>
+            </form>
+        </div>
+        <div class="col">
+            <!-- <button (click)="relog()">relog</button>
+        <button (click)="test()">test</button> -->
+
+            <!-- <p>trades: {{trades.length}}</p> -->
+            <!-- <p>{{trades | json}}</p> -->
+            <div *ngIf="trades.length" class="row m-2">
+                Trades:
+            </div>
+            <div *ngIf="!trades.length" class="row m-2">
+                No active trades
+            </div>
+            <div *ngFor="let trade of trades" class="my-2 p-1 border">
+                <div class="row m-0 p-0">
+                    <div class="col-2 py-auto">
+                        <img class="img-fluid" src="{{trade.buyer_data.avatar}}">
+                    </div>
+                    <div class="col-3">
+                        <div class="col-12">
+                            <small>Name:</small>
+                        </div>
+                        <div class="col-12">
+                            {{trade.buyer_data.name}}
+                        </div>
+                    </div>
+                    <div class="col-2">
+                        <div class="col-12">
+                            <small>Code:</small>
+                        </div>
+                        <div class="col-12">
+                            {{trade.protection_code}}
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <div class="col-12">
+                            <small>SteamID</small>
+                        </div>
+                        <div class="col-12">
+                            {{trade.buyer_data.steamid}}
+                        </div>
+                    </div>
+                </div>
+                <div class="row m-1">
+                    Items:
+                </div>
+                <div class="row">
+                    <div *ngFor="let item of trade.items_data" class="col-2 m-1">
+                        <img src="{{item.img}}" class="img-fluid rounded">
+                    </div>
                 </div>
             </div>
-
-            <div class="row pt-4">
-                <div *ngIf="appState==0"  class="alert alert-secondary col-10 offset-1" role="alert">
-                    Please log in to start selling
-                </div>
-                <div *ngIf="appState==1" class="alert alert-success col-10 offset-1" role="alert">
-                    Selling is active
-                </div>
-                <div *ngIf="appState==-1" class="alert alert-danger col-10 offset-1" role="alert">
-                    Selling isn't active
-                </div>
-            </div>
         </div>
-
-        <div class="form-label-group">
-            <input [(ngModel)]="username" id="inputLogin" class="form-control" placeholder="Login" name="Login"
-                required="" autofocus="">
-            <label for="inputLogin">Login</label>
-        </div>
-
-        <div class="form-label-group">
-            <input [(ngModel)]="password" (keyup.enter)="login()" type="password" id="inputPassword" class="form-control"
-                placeholder="Password" name="Password" required="">
-            <label for="inputPassword">Password</label>
-        </div>
-
-        <button (click)="login()" class="btn btn-lg btn-primary btn-block">Sign in</button>
-    </form>
-    <div>
-        <button (click)="relog()">relog</button>
-        <button (click)="test()">test</button>
-
-        <p>trades: {{trades.length}}</p>
-        <p>{{trades | json}}</p>
-        <!-- <div *ngFor="let trade of trades">{{trade}}</div>-->
     </div>
 </div>
