@@ -49,22 +49,20 @@
 
             <!-- <p>trades: {{trades.length}}</p> -->
             <!-- <p>{{trades | json}}</p> -->
+            <div *ngIf="!trades.length" class="w-100 h-100 d-flex align-items-center justify-content-center">
+                No active trades
+            </div>
             <div *ngIf="trades.length" class="row m-2">
                 Trades:
             </div>
-            <div *ngIf="!trades.length" class="row m-2">
-                No active trades
-            </div>
-            <div *ngFor="let trade of trades" class="my-2 p-1 border">
-                <div class="row m-0 p-0">
-                    <div class="col-2 py-auto">
-                        <img class="img-fluid" src="{{trade.buyer_data.avatar}}">
-                    </div>
-                    <div class="col-3">
-                        <div class="col-12">
+            <div *ngFor="let trade of trades" class="my-2 p-1 border border-success">
+                <div class="row m-0 p-0 text-nowrap" style="height: 60px">
+                    <div class="col-5 pl-0">
+                        <img class="img-fluid position-absolute h-100" src="{{trade.buyer_data.avatar}}" style="opacity: 0.4">
+                        <div class="col-12 p-0">
                             <small>Name:</small>
                         </div>
-                        <div class="col-12">
+                        <div class="col-12 text-truncate p-0">
                             {{trade.buyer_data.name}}
                         </div>
                     </div>
@@ -88,9 +86,9 @@
                 <div class="row m-1">
                     Items:
                 </div>
-                <div class="row">
-                    <div *ngFor="let item of trade.items_data" class="col-2 m-1">
-                        <img src="{{item.img}}" class="img-fluid rounded">
+                <div class="row m-0 p-1">
+                    <div *ngFor="let item of trade.items_data" class="col-2 m-0 p-1">
+                        <img src="{{item.img}}" class="img-fluid rounded" [ngStyle]="{'border': '3px solid '+item.color}"  data-toggle="tooltip" data-placement="bottom" title="{{item.name}}">
                     </div>
                 </div>
             </div>
