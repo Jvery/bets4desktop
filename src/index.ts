@@ -138,6 +138,7 @@ let tradingDemonTimeout = 5000; //in ms
 let appstatusDemonTimeout = 1 * 60 * 1000; //in ms
 let minTimeBetweenRelogsInMs = 1000 * 60 * 2; //in ms
 let relogginDemonTimeoutInMs = 1000 * 60; //in ms
+let minNumberOfUncessfullRelogsToStopSelling = 3;
 let botSteamId = "";
 let sentTrades: any[] = [];
 let currentTradesInApi: any;
@@ -174,10 +175,9 @@ client.on('error', function (err: any) {
 // The eresult value might be 0 (Invalid), which indicates that the disconnection was due to the connection being closed directly, without Steam sending a LoggedOff message.
 client.on('disconnected', function (eresult: any, msg: any) {
   log.info(`disconnected ${SteamUser.EResult[eresult]} ${msg}`);
-  if (mainWindow){
+  if (mainWindow) {
     mainWindow.webContents.send('vex-alert', `disconnected ${SteamUser.EResult[eresult]} ${msg}`);
   }
-  //TODO: надо релогнуться?
 });
 
 manager.on('sessionExpired', (err: any) => {
@@ -207,9 +207,9 @@ client.on('loggedOn', function (details: any, parental: any) {
 //получили стимгвард, просим ввести код
 client.on('steamGuard', function (domain: any, callback: any) {
   log.info(`need steamGuard code`);
-if (mainWindow){
-  mainWindow.webContents.send('need-steamguardcode', '');
-}
+  if (mainWindow) {
+    mainWindow.webContents.send('need-steamguardcode', '');
+  }
   ipcMain.once('need-steamguardcode', (event: any, code: any) => {
     if (code == " ") {//TODO: remove autocode
       code = SteamTotp.generateAuthCode("rVQKM57LSiBfwWQPnh+lHvSNoeY=");
@@ -222,7 +222,7 @@ if (mainWindow){
 //окончательно залогинились, получили сессию
 client.on('webSession', function (sessionID: any, cookies: any) {
   try {
-    if (mainWindow){
+    if (mainWindow) {
       mainWindow.webContents.send('isLogginIn', false);
     }
     log.info(`webSession ${sessionID} ${cookies}`);
@@ -231,7 +231,7 @@ client.on('webSession', function (sessionID: any, cookies: any) {
         if (err) {
           log.info(err);
           log.error(`ERROR setCookies ${err.name} \n ${err.message} \n ${err.stack}`);
-          if (mainWindow){
+          if (mainWindow) {
             mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
           }
           return;
@@ -248,6 +248,9 @@ client.on('webSession', function (sessionID: any, cookies: any) {
           is_tradingDemon_started = true;
           let trades = await getTrades(botSteamId);
           currentTradesInApi = trades;
+          if (mainWindow) {
+            mainWindow.webContents.send('appState-update', 1);
+          }
           tradingDemon();
           appStatusDemon(appstatusDemonTimeout);
           relogginDemon(relogginDemonTimeoutInMs);
@@ -304,7 +307,7 @@ manager.on('unknownOfferSent', function (offer: any) {
       offer.data('trade_id', foundTrade.trade_id);
     } else {
       log.info(`Can't find offer with message ${offer.message} in currentTradesInApi reporting by prot code`);
-      reportTradeByOfferAndStatus(offer,-1);
+      reportTradeByOfferAndStatus(offer, -1);
     }
   } catch (error) {
     log.error(error);
@@ -313,9 +316,8 @@ manager.on('unknownOfferSent', function (offer: any) {
 
 manager.on('newOffer', function (offer: any) {
   try {
-    //TODO: проверяем на обманные трейды и отменяем их, переделать наши покупки с маркета не отменяло, надо в массиве сенттрейдс искать трейд для отмены по прот коду
     log.info(`got new offer ${JSON.stringify(offer)}`);
-    if (offer.message.indexOf(`Protection Code:`) != -1) {
+    if (sentTrades.findIndex(sent_trade => sent_trade.protection_code === offer.message) != -1) {
       //fake trade, canceling
       log.info(`fake offer ${offer} canceling`);
       offer.cancel((err: any) => {
@@ -328,7 +330,7 @@ manager.on('newOffer', function (offer: any) {
 });
 
 let lastRelogTimeInMs = (new Date()).getTime();
-
+let NumberOfUnccessfulRelogs = 0;
 async function relogginDemon(timeout: number) {
   if (isClosingApp) {
     log.info(`relogginDemon stopped coz closing`);
@@ -338,6 +340,7 @@ async function relogginDemon(timeout: number) {
     log.info(`relogginDemon started`);
     let currentTimeInMs = (new Date()).getTime();
     if (!(client && client.client && client.client.loggedOn) || isRelogNeededByCommunity) {
+      NumberOfUnccessfulRelogs++;
       log.info(`relogginDemon need relog!`);
       if (currentTimeInMs - lastRelogTimeInMs > minTimeBetweenRelogsInMs) {
         //sending request to receive error and relog
@@ -347,12 +350,14 @@ async function relogginDemon(timeout: number) {
             log.info(`relogginDemon calling weblogon`);
             isRelogNeededByCommunity = false;
             //node-steam-user Being connected is the same thing as being logged on (not the same as being logged onto the web, but if your client session drops then so does your web session). If you're not connected, the steamID property will be null.
-            //TODO: может вылетать с ошибкой если к стиму не подключено, тогда стимайди будет null, тогда надо релог руками
             if (client.steamID) {
               client.webLogOn();
             } else {
-              log.error(`relogginDemon can't relog client.steamID ${client.steamID}`)
-              //need manual relog?
+              log.error(`relogginDemon can't relog client.steamID ${client.steamID}`);
+              if (mainWindow) {
+                mainWindow.webContents.send('appState-update', 0);
+                mainWindow.webContents.send('vex-alert', `Need manual relog to continue selling`);
+              }
             }
           } catch (error) {
             log.error(`relogginDemon ${error}`);
@@ -361,10 +366,20 @@ async function relogginDemon(timeout: number) {
       } else {
         log.info(`relogginDemon cant relog coz time ${currentTimeInMs}-${lastRelogTimeInMs}>${minTimeBetweenRelogsInMs}`);
       }
+    } else {
+      NumberOfUnccessfulRelogs = 0;
+      if (mainWindow) {
+        mainWindow.webContents.send('appState-update', 1);
+      }
     }
   } catch (error) {
     log.error(`relogginDemon ${error}`);
   } finally {
+    if (NumberOfUnccessfulRelogs >= minNumberOfUncessfullRelogsToStopSelling) {
+      if (mainWindow) {
+        mainWindow.webContents.send('appState-update', -1);
+      }
+    }
     if (timeout) {
       setTimeout(relogginDemon.bind(null), timeout);
     }
@@ -411,7 +426,7 @@ async function tradingDemon() {
   try {
     if (client && client.client && client.client.loggedOn) {
       let trades = await getTrades(botSteamId);
-      if (mainWindow){
+      if (mainWindow) {
         mainWindow.webContents.send('trades-update', trades);
       }
       if (trades && trades.length) {
@@ -478,14 +493,8 @@ function createTradeoffer(trade: any) {
       log.info(err);
       log.error(`ERROR getting escrow ${err.name} \n ${err.message} \n ${err.stack}`);
       offer.data('error', err.message);
-      log.info(sentTrades);
-      //TODO: чет я тут непонятное наворотил, он же всегда в массиве отправленых будет, при такой ошибке трейд не репортит но и ничего не делает
-      var index = sentTrades.indexOf(trade);
-      if (index > -1) {
-        sentTrades.splice(index, 1);
-      } else {
-        reportTradeByOfferAndStatus(offer, 2);
-      }
+      //log.info(sentTrades);
+      reportTradeByOfferAndStatus(offer, 2);
       log.info(sentTrades);
       return;
     } else {
@@ -501,8 +510,7 @@ function createTradeoffer(trade: any) {
             log.error(`ERROR sending offer ${err.name} \n ${err.message} \n ${err.stack}`);
             offer.data('error', err.message);
             log.info(`Offer #${offer && offer.id} tradeid ${trade && trade.trade_id} will be reported as unsucceful in 3min`);
-            setTimeout(reportTradeByOfferAndStatus.bind(null, offer, 5), 180000); //репортим через 3 минут если этот трейд не отрепортится сам черз поллдату
-            //TODO: возможно нужно проверять этот оффер в поллдате
+            setTimeout(reportTradeByOfferAndStatus.bind(null, offer, 5), 180000); //reporting it with error in 3 mins
             return;
           } else {
             reportTradeByOfferAndStatus(offer, 0);
@@ -570,7 +578,7 @@ async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
         default:
           tradeStatusByOffer = 2;
       }
-      if (tradeStatus != tradeStatusByOffer) {
+      if (tradeStatus != tradeStatusByOffer && tradeStatus != 3) {
         log.info(`reportTradeByOfferAndStatus wrong tradeStatus ${tradeStatus} -> ${tradeStatusByOffer}`);
         tradeStatus = tradeStatusByOffer;
       }
@@ -580,7 +588,7 @@ async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
       o_tradeoffer_id = tradeoffer.id;
       o_tradeoffer_status = tradeoffer.state;
       o_error = tradeoffer.data('error');
-      o_protectionCode = tradeoffer.message.replace('Protection Code: ','');
+      o_protectionCode = tradeoffer.message.replace('Protection Code: ', '');
     }
     if (o_trade_id || o_protectionCode) {
       log.info(`reportTradeByOfferAndStatus trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error} ; code: ${o_protectionCode}`);
@@ -651,7 +659,7 @@ function bets4proSaveApiKey(botSteamId: any, apiKey: any): Promise<string> {
 }
 
 
-function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any, protectionCode=''): Promise<string> {
+function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any, protectionCode = ''): Promise<string> {
   return new Promise(function (resolve, reject) {
     let data = {
       trade_id: tradeId,

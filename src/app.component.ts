@@ -63,14 +63,18 @@ export class AppComponent implements OnInit {
     ipcRenderer.on('vex-alert', (event: any, msg: any) => {
       vex.dialog.alert(`${msg}`);
     });
+    ipcRenderer.on('appState-update', (event: any, state: number) => {
+      if (this.appState != state) {
+        this.appState = state;
+        this.ref.tick();
+      }
+    });
     ipcRenderer.on('trades-update', (event: any, trades: any) => {
       if (!trades) {
         trades = [];
       }
       if (this.trades!=trades){
         this.trades = trades;
-        //TODO: proper appstate via ipc
-        this.appState = 1;
         this.ref.tick();
       }
     });
