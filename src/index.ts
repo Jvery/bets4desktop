@@ -150,8 +150,8 @@ let manager = new TradeOfferManager({
   "steam": client,
   "community": community,
   "language": "en", // We want English item descriptions
-  "cancelTime": 1 * 60 * 1000, //TODO: 5*60*1000
-  "pendingCancelTime": 1 * 60 * 1000, //TODO: 10*60*1000
+  "cancelTime": 3 * 60 * 1000, //TODO: 5*60*1000
+  "pendingCancelTime": 3 * 60 * 1000, //TODO: 10*60*1000
   "pollInterval": 9000
 });
 
@@ -316,16 +316,19 @@ manager.on('unknownOfferSent', function (offer: any) {
 
 manager.on('newOffer', function (offer: any) {
   try {
-    log.info(`got new offer ${JSON.stringify(offer)}`);
-    if (sentTrades.findIndex(sent_trade => sent_trade.protection_code === offer.message) != -1) {
+    log.info(`got new offer ${offer.message}`);
+    if (sentTrades.findIndex(sent_trade => `Protection Code: ${sent_trade.protection_code}` === offer.message) != -1) {
       //fake trade, canceling
-      log.info(`fake offer ${offer} canceling`);
+      log.info(`fake offer ${offer.id} ${offer.message} canceling`);
       offer.cancel((err: any) => {
-        log.info(`offer cancel ${offer} error: ${err}`)
-      })
+        log.info(`offer cancel ${offer.id} ${offer.message} error: ${err}`)
+      });
+      if (mainWindow) {
+        mainWindow.webContents.send('vex-alert', `Your API key was compromised, please change it and never let untrusted 3rd party get it again!`);
+      }
     }
   } catch (error) {
-    log.info(`newOffer ${offer} error: ${error}`)
+    log.info(`newOffer ${offer.id}  ${offer.message} error: ${error}`)
   }
 });
 
@@ -442,7 +445,7 @@ async function tradingDemon() {
           if (trade.status != 0 ||
             trade.seller_data.steamid != botSteamId ||
             sentTrades.findIndex(sent_trade => sent_trade.trade_id == trade.trade_id) != -1) {
-            log.info(`no need to create trade ${JSON.stringify(trade)}`);
+            log.info(`no need to create trade ${trade.id}`);
             continue;
           }
           if (client && client.client && client.client.loggedOn) {
@@ -592,7 +595,7 @@ async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
     }
     if (o_trade_id || o_protectionCode) {
       log.info(`reportTradeByOfferAndStatus trade_id: ${o_trade_id} ; status: ${tradeStatus} ; tradeoffer_id: ${o_tradeoffer_id} ; tradeoffer_status: ${o_tradeoffer_status} ; error: ${o_error} ; code: ${o_protectionCode}`);
-      result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error);
+      result = await bets4proReportTrade(o_trade_id, tradeStatus, o_tradeoffer_id, o_tradeoffer_status, o_error, o_protectionCode);
       log.info(`reportTradeByOfferAndStatus result ${JSON.stringify(result)}`);
     }
     else {
@@ -659,7 +662,7 @@ function bets4proSaveApiKey(botSteamId: any, apiKey: any): Promise<string> {
 }
 
 
-function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any, protectionCode = ''): Promise<string> {
+function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, tradeofferState: any, errorMessage: any, protectionCode: any): Promise<string> {
   return new Promise(function (resolve, reject) {
     let data = {
       trade_id: tradeId,
