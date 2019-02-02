@@ -1,6 +1,13 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { enableLiveReload } from 'electron-compile';
 import { JsonPipe } from '@angular/common';
+if (require('electron-squirrel-startup')) app.quit()
+// if first time install on windows, do not run application, rather
+// let squirrel installer do its work
+const setupEvents = require('./setup-events.ts');
+if (setupEvents.handleSquirrelEvent()) {
+  process.exit()
+}
 const fkill = require('fkill');
 const log = require('electron-log');
 // Write to this file, must be set before first logging
@@ -52,6 +59,20 @@ app.on('ready', createWindow);
 
 // Quit when all windows are closed.
 app.on('window-all-closed', async () => {
+  stopApp();
+});
+
+app.on('activate', () => {
+  // On OS X it's common to re-create a window in the app when the
+  // dock icon is clicked and there are no other windows open.
+  if (mainWindow === null) {
+    createWindow();
+  }
+});
+
+
+
+const stopApp = async () => {
   try {
     log.info(`stopping app ${botSteamId}`);
     if (botSteamId) {
@@ -71,15 +92,8 @@ app.on('window-all-closed', async () => {
   }
   //windows
   fkill(`bets4desktop`, true, true, true);
-});
+}
 
-app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (mainWindow === null) {
-    createWindow();
-  }
-});
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.

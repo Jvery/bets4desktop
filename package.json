@@ -1,7 +1,7 @@
 {
   "name": "bets4desktop",
   "productName": "bets4desktop",
-  "version": "0.8.22",
+  "version": "0.8.23",
   "description": "Bets4pro desktop trading app",
   "main": "src/index.ts",
   "repository": "https://github.com/Jvery/bets4desktop",
