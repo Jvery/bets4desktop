@@ -1,7 +1,7 @@
 {
   "name": "bets4desktop",
-  "productName": "bets4desktop",
-  "version": "0.8.23",
+  "productName": "Bets4Desktop",
+  "version": "0.8.24",
   "description": "Bets4pro desktop trading app",
   "main": "src/index.ts",
   "repository": "https://github.com/Jvery/bets4desktop",
@@ -13,7 +13,7 @@
     "lint": "tslint src"
   },
   "keywords": [],
-  "author": "bets4pro",
+  "author": "Bets4Pro",
   "license": "MIT",
   "config": {
     "forge": {
@@ -33,7 +33,7 @@
         "packageManager": "yarn"
       },
       "electronWinstallerConfig": {
-        "name": "bets4desktop"
+        "name": "Bets4Desktop"
       },
       "electronInstallerDebian": {},
       "electronInstallerRedhat": {},
@@ -43,7 +43,7 @@
       },
       "windowsStoreConfig": {
         "packageName": "",
-        "name": "bets4desktop"
+        "name": "Bets4Desktop"
       }
     }
   },

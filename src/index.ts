@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { enableLiveReload } from 'electron-compile';
 import { JsonPipe } from '@angular/common';
+var path = require('path');
 if (require('electron-squirrel-startup')) app.quit()
 // if first time install on windows, do not run application, rather
 // let squirrel installer do its work
@@ -30,6 +31,7 @@ const createWindow = async () => {
   mainWindow = new BrowserWindow({
     minWidth: 800,
     minHeight: 500,
+    icon: path.join(__dirname, 'img/logo_64x64.png')
   });
 
   // and load the index.html of the app.
