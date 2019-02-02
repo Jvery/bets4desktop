@@ -43,7 +43,7 @@
                 </button>
             </form>
         </div>
-        <div class="col">
+        <div class="col" style="height: 100vh; overflow: auto;">
             <!-- <button (click)="relog()">relog</button>
         <button (click)="test()">test</button> -->
 
@@ -57,21 +57,15 @@
             </div>
             <div *ngFor="let trade of trades" class="my-2 p-1 border border-success">
                 <div class="row m-0 p-0 text-nowrap" style="height: 60px">
-                    <div class="col-5 pl-0">
-                        <img class="img-fluid position-absolute h-100" src="{{trade.buyer_data.avatar}}" style="opacity: 0.4">
-                        <div class="col-12 p-0">
-                            <small>Name:</small>
-                        </div>
+                    <div class="col-2 m-0 p-1">
+                        <img class="img-fluid position-absolute h-100 rounded" src="{{trade.buyer_data.avatar}}" style="opacity: 0.4">
+                    </div>
+                    <div class="col-5 pl-1">
                         <div class="col-12 text-truncate p-0">
                             {{trade.buyer_data.name}}
                         </div>
-                    </div>
-                    <div class="col-2">
-                        <div class="col-12">
-                            <small>Code:</small>
-                        </div>
-                        <div class="col-12">
-                            {{trade.protection_code}}
+                        <div class="col-12 p-1">
+                            <small>Protection Code: </small> {{trade.protection_code}}
                         </div>
                     </div>
                     <div class="col-5">
@@ -88,7 +82,8 @@
                 </div>
                 <div class="row m-0 p-1">
                     <div *ngFor="let item of trade.items_data" class="col-2 m-0 p-1">
-                        <img src="{{item.img}}" class="img-fluid rounded" [ngStyle]="{'border': '3px solid '+item.color}"  data-toggle="tooltip" data-placement="bottom" title="{{item.name}}">
+                        <img src="{{item.img}}" class="img-fluid rounded" [ngStyle]="{'border': '3px solid '+item.color}"
+                            data-toggle="tooltip" data-placement="bottom" title="{{item.name}}">
                     </div>
                 </div>
             </div>

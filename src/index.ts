@@ -21,8 +21,8 @@ if (isDevMode) enableLiveReload();
 const createWindow = async () => {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 500,
+    minWidth: 800,
+    minHeight: 500,
   });
 
   // and load the index.html of the app.
@@ -112,7 +112,7 @@ ipcMain.on('test-steam', (event: any, args: any) => {
 });
 
 function login(username: string, password: string) {
-  log.info(log.transports.file.findLogPath());
+  // log.info(log.transports.file.findLogPath());
   let logOnOptions = {
     "accountName": username,
     "password": password
@@ -174,15 +174,15 @@ client.on('error', function (err: any) {
 // The SteamUser object's steamID property will still be defined when this is emitted.
 // The eresult value might be 0 (Invalid), which indicates that the disconnection was due to the connection being closed directly, without Steam sending a LoggedOff message.
 client.on('disconnected', function (eresult: any, msg: any) {
-  log.info(`disconnected ${SteamUser.EResult[eresult]} ${msg}`);
-  if (mainWindow) {
-    mainWindow.webContents.send('vex-alert', `disconnected ${SteamUser.EResult[eresult]} ${msg}`);
-  }
+  log.info(`client disconnected ${SteamUser.EResult[eresult]} ${msg}`);
+  // if (mainWindow) {
+  //   mainWindow.webContents.send('vex-alert', `disconnected ${SteamUser.EResult[eresult]} ${msg}`);
+  // }
+  relogginDemon(0);
 });
 
 manager.on('sessionExpired', (err: any) => {
   if (err) {
-    log.info(err);
     log.error(`ERROR manager session expired ${err.name} \n ${err.message} \n ${err.stack}`);
   }
   log.info(`Session manager expired need relog...`);
@@ -195,6 +195,7 @@ community.on('sessionExpired', (err: any) => {
     log.error(`ERROR community session expired ${err.name} \n ${err.message} \n ${err.stack}`);
   }
   log.info(`Session community expired need relog...`);
+  relogginDemon(0);
 })
 
 //залогинились, но пока не до конца
