@@ -1,7 +1,7 @@
 {
   "name": "bets4desktop",
   "productName": "Bets4Desktop",
-  "version": "0.8.24",
+  "version": "0.9.1",
   "description": "Bets4pro desktop trading app",
   "main": "src/index.ts",
   "repository": "https://github.com/Jvery/bets4desktop",
@@ -30,10 +30,12 @@
         ]
       },
       "electronPackagerConfig": {
-        "packageManager": "yarn"
+        "packageManager": "yarn",
+        "icon": "E:\\repos\\bets4pro_desktop_app\\bets4desktop\\src\\img\\logo.png.ico"
       },
       "electronWinstallerConfig": {
-        "name": "Bets4Desktop"
+        "name": "Bets4Desktop",
+        "iconUrl": "E:\\repos\\bets4pro_desktop_app\\bets4desktop\\src\\img\\logo.png.ico"
       },
       "electronInstallerDebian": {},
       "electronInstallerRedhat": {},
@@ -79,7 +81,7 @@
     "babel-preset-env": "^1.7.0",
     "babel-preset-react": "^6.24.1",
     "electron": "^4.0.2",
-    "electron-forge": "^5.2.3",
+    "electron-forge": "^5.2.4",
     "electron-prebuilt-compile": "3.0.10",
     "tslint": "^4.2.0",
     "typescript": "~2.1.4"
