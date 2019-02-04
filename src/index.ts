@@ -166,8 +166,8 @@ let manager = new TradeOfferManager({
   "steam": client,
   "community": community,
   "language": "en", // We want English item descriptions
-  "cancelTime": 3 * 60 * 1000, //TODO: 5*60*1000
-  "pendingCancelTime": 3 * 60 * 1000, //TODO: 10*60*1000
+  "cancelTime": 5 * 60 * 1000,
+  "pendingCancelTime": 10 * 60 * 1000,
   "pollInterval": 9000
 });
 
@@ -214,29 +214,25 @@ community.on('sessionExpired', (err: any) => {
   relogginDemon(0);
 })
 
-//залогинились, но пока не до конца
 client.on('loggedOn', function (details: any, parental: any) {
   log.info(`loggedOn ${details} ${parental}`)
   botSteamId = "" + client && client.client && client.client.steamID;
   log.info(`steamId ${botSteamId}`);
 });
 
-//получили стимгвард, просим ввести код
+//need code
 client.on('steamGuard', function (domain: any, callback: any) {
   log.info(`need steamGuard code`);
   if (mainWindow) {
     mainWindow.webContents.send('need-steamguardcode', '');
   }
   ipcMain.once('need-steamguardcode', (event: any, code: any) => {
-    if (code == " ") {//TODO: remove autocode
-      code = SteamTotp.generateAuthCode("rVQKM57LSiBfwWQPnh+lHvSNoeY=");
-    }
     log.info(`received code: ${code}`);
     callback(code);
   });
 });
 
-//окончательно залогинились, получили сессию
+//finally logged on, received webSession
 client.on('webSession', function (sessionID: any, cookies: any) {
   try {
     if (mainWindow) {
@@ -260,7 +256,6 @@ client.on('webSession', function (sessionID: any, cookies: any) {
           log.info(`webSession not logged in properly ${botSteamId} ${manager.apiKey}`)
           return;
         }
-        //залогинились
         if (!is_tradingDemon_started) {
           is_tradingDemon_started = true;
           let trades = await getTrades(botSteamId);
@@ -286,8 +281,8 @@ client.on('webSession', function (sessionID: any, cookies: any) {
 manager.on('sentOfferChanged', function (offer: any, oldState: any) {
   try {
     log.info(`TradeId ${offer.data('trade_id')} offer #${offer.id} changed: ${TradeOfferManager.ETradeOfferState[oldState]} -> ${TradeOfferManager.ETradeOfferState[offer.state]}`);
-    if (offer.state === 2 || offer.state === 9) { //активный трейд - 2 или ждет подтверждения 9
-      //это может быть активный трейд с предыдущей сессии
+    if (offer.state === 2 || offer.state === 9) { //active - 2 или need confirm 9
+      //in case it's from previous session
       if (sentTrades.findIndex(trade => trade.trade_id === offer.data('trade_id')) === -1) {
         log.info(`Added ${offer.data('trade_id')} to sentTrades array coz found it in active state`);
         sentTrades.push({

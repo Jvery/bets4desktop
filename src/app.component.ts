@@ -24,9 +24,6 @@ export class AppComponent implements OnInit {
   public trades = [];
   ngOnInit(): void {
     log.info('component initialized');
-    // TODO remove this name password
-    this.username = 'M6kvuxlxHUwswzl';
-    this.password = '9prSt98baMU7JAg';
     this.init_messages();
   }
   init_messages() {

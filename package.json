@@ -1,7 +1,7 @@
 {
   "name": "bets4desktop",
   "productName": "Bets4Desktop",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Bets4pro desktop trading app",
   "main": "src/index.ts",
   "repository": "https://github.com/Jvery/bets4desktop",
@@ -30,12 +30,10 @@
         ]
       },
       "electronPackagerConfig": {
-        "packageManager": "yarn",
-        "icon": "E:\\repos\\bets4pro_desktop_app\\bets4desktop\\src\\img\\logo.png.ico"
+        "packageManager": "yarn"
       },
       "electronWinstallerConfig": {
-        "name": "Bets4Desktop",
-        "iconUrl": "E:\\repos\\bets4pro_desktop_app\\bets4desktop\\src\\img\\logo.png.ico"
+        "name": "Bets4Desktop"
       },
       "electronInstallerDebian": {},
       "electronInstallerRedhat": {},
