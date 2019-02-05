@@ -30,8 +30,7 @@ const createWindow = async () => {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     minWidth: 800,
-    minHeight: 500,
-    icon: path.join(__dirname, 'img/logo_64x64.png')
+    minHeight: 500
   });
 
   // and load the index.html of the app.
