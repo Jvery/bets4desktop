@@ -54,6 +54,9 @@ export class AppComponent implements OnInit {
         this.isLogginIn = true;
       } else {
         this.isLogginIn = false;
+        if (this.appState == 1) {
+          $('a#pills-trades-tab').click();
+        }
       }
       this.ref.tick();
     });
@@ -70,7 +73,7 @@ export class AppComponent implements OnInit {
       if (!trades) {
         trades = [];
       }
-      if (this.trades!=trades){
+      if (this.trades != trades) {
         this.trades = trades;
         this.ref.tick();
       }
@@ -84,9 +87,6 @@ export class AppComponent implements OnInit {
   }
   relog() {
     ipcRenderer.send('relog-steam', {});
-  }
-  test() {
-    ipcRenderer.send('test-steam', {});
   }
 }
 

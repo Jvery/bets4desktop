@@ -29,8 +29,8 @@ if (isDevMode) enableLiveReload();
 const createWindow = async () => {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    minWidth: 800,
-    minHeight: 500
+    minWidth: 650,
+    minHeight: 550
   });
 
   // and load the index.html of the app.
@@ -118,13 +118,6 @@ ipcMain.on('relog-steam', (event: any, args: any) => {
   log.info(`received relog-steam msg wtih args: ${JSON.stringify(args)}`);
   relog();
 });
-ipcMain.on('test-steam', (event: any, args: any) => {
-  log.info(`received test-steam msg wtih args: ${JSON.stringify(args)}`);
-  log.info(`doing test`);
-  community.getWebApiKey('', (err: any, key: any) => {
-    log.info(`test-steam result ${err} , ${key}`);
-  });
-});
 
 function login(username: string, password: string) {
   // log.info(log.transports.file.findLogPath());
@@ -175,7 +168,7 @@ let manager = new TradeOfferManager({
 // If this event isn't handled, the program will crash.
 // The SteamUser object's steamID property will still be defined when this is emitted. The Error object will have an eresult parameter which is a value from the EResult enum.
 client.on('error', function (err: any) {
-  log.info(`error ${err}`);
+  log.error(`error ${err}`);
   if (mainWindow) {
     mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
   }
@@ -206,7 +199,6 @@ manager.on('sessionExpired', (err: any) => {
 
 community.on('sessionExpired', (err: any) => {
   if (err) {
-    log.info(err);
     log.error(`ERROR community session expired ${err.name} \n ${err.message} \n ${err.stack}`);
   }
   log.info(`Session community expired need relog...`);
@@ -234,9 +226,6 @@ client.on('steamGuard', function (domain: any, callback: any) {
 //finally logged on, received webSession
 client.on('webSession', function (sessionID: any, cookies: any) {
   try {
-    if (mainWindow) {
-      mainWindow.webContents.send('isLogginIn', false);
-    }
     log.info(`webSession ${sessionID} ${cookies}`);
     manager.setCookies(cookies, async function (err: any) {
       try {
@@ -261,6 +250,7 @@ client.on('webSession', function (sessionID: any, cookies: any) {
           currentTradesInApi = trades;
           if (mainWindow) {
             mainWindow.webContents.send('appState-update', 1);
+            mainWindow.webContents.send('isLogginIn', false);
           }
           tradingDemon();
           appStatusDemon(appstatusDemonTimeout);
@@ -504,12 +494,10 @@ function createTradeoffer(trade: any) {
   }
   offer.getUserDetails(function (err: any, me: any, them: any) {
     if (err) {
-      log.info(err);
       log.error(`ERROR getting escrow ${err.name} \n ${err.message} \n ${err.stack}`);
       offer.data('error', err.message);
       //log.info(sentTrades);
       reportTradeByOfferAndStatus(offer, 2);
-      log.info(sentTrades);
       return;
     } else {
       if (me.escrowDays !== 0 || them.escrowDays !== 0) {

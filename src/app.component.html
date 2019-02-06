@@ -1,6 +1,22 @@
-<div class="container-fluid font-weight-light">
-    <div class="row">
-        <div class="col-4">
+<div class="container-fluid bg-secondary px-0">
+    <ul class="nav nav-pills text-center mx-0" id="pills-tab" role="tablist">
+        <li class="nav-item col-4 px-0">
+            <a class="nav-link text-white active" id="pills-home-tab" data-toggle="pill" href="#pills-home" role="tab"
+                aria-controls="pills-home" aria-selected="true">Login</a>
+        </li>
+        <li class="nav-item col-4 px-0">
+            <a class="nav-link text-white" id="pills-trades-tab" data-toggle="pill" href="#pills-trades" role="tab"
+                aria-controls="pills-trades" aria-selected="false">Trades</a>
+        </li>
+        <li class="nav-item col-4 px-0">
+            <a class="nav-link text-white" id="pills-settings-tab" data-toggle="pill" href="#pills-settings" role="tab"
+                aria-controls="pills-settings" aria-selected="false">Settings</a>
+        </li>
+    </ul>
+</div>
+<div class="tab-content" id="pills-tabContent">
+    <div class="tab-pane fade show active" id="pills-home" role="tabpanel" aria-labelledby="pills-home-tab">
+        <div class="col-12">
             <form class="form-signin">
                 <div class="text-center">
                     <div class="row">
@@ -43,14 +59,27 @@
                 </button>
             </form>
         </div>
-        <div class="col" style="height: 100vh; overflow: auto;">
-            <!-- <button (click)="relog()">relog</button>
-        <button (click)="test()">test</button> -->
-
-            <!-- <p>trades: {{trades.length}}</p> -->
-            <!-- <p>{{trades | json}}</p> -->
-            <div *ngIf="!trades.length" class="w-100 h-100 d-flex align-items-center justify-content-center">
-                No active trades
+    </div>
+    <div class="tab-pane fade" id="pills-trades" role="tabpanel" aria-labelledby="pills-trades-tab" style="height: 100vh; overflow: auto;">
+        <div class="col-12 my-3 text-center">
+            <div *ngIf="appState==0" class="alert alert-secondary col-10 offset-1" role="alert">
+                Log in to start selling
+            </div>
+            <div *ngIf="appState==1" class="alert alert-success col-10 offset-1" role="alert">
+                Selling is active
+            </div>
+            <div *ngIf="appState==-1" class="alert alert-danger col-10 offset-1" role="alert">
+                Selling isn't active
+            </div>
+        </div>
+        <div class="col-12">
+            <div *ngIf="!trades.length" class="align-items-center justify-content-center">
+                <div class="col-6 offset-3">
+                    <img class="img-fluid" src="img/no.png">
+                </div>
+                <p class="text-center">
+                    No active trades
+                </p>
             </div>
             <div *ngIf="trades.length" class="row m-2">
                 Trades:
@@ -88,5 +117,8 @@
                 </div>
             </div>
         </div>
+    </div>
+    <div class="tab-pane fade" id="pills-settings" role="tabpanel" aria-labelledby="pills-settings-tab">
+        ...
     </div>
 </div>
