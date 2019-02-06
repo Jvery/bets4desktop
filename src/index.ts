@@ -35,12 +35,16 @@ const createWindow = async () => {
 
   // and load the index.html of the app.
   mainWindow.loadURL(`file://${__dirname}/index.html`);
-
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (mainWindow) {
+      mainWindow.setTitle(`${app.getName()} v${app.getVersion()}`);
+    }
+  });
   // Open the DevTools.
   if (isDevMode) {
     mainWindow.webContents.openDevTools();
   }
-
+  log.info(app.getVersion());
   // Emitted when the window is closed.
   mainWindow.on('closed', () => {
     // Dereference the window object, usually you would store windows
