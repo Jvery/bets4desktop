@@ -170,6 +170,7 @@ let manager = new TradeOfferManager({
 client.on('error', function (err: any) {
   log.error(`error ${err}`);
   if (mainWindow) {
+    mainWindow.webContents.send('isLogginIn', false);
     mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
   }
 });
@@ -233,6 +234,7 @@ client.on('webSession', function (sessionID: any, cookies: any) {
           log.info(err);
           log.error(`ERROR setCookies ${err.name} \n ${err.message} \n ${err.stack}`);
           if (mainWindow) {
+            mainWindow.webContents.send('isLogginIn', false);
             mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
           }
           return;

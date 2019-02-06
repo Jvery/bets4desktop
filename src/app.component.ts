@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { Component, OnInit, ApplicationRef } from '@angular/core';
+import { Component, OnInit, AfterViewInit, ApplicationRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { __await } from 'tslib';
 const { ipcRenderer } = require('electron');
@@ -8,12 +8,13 @@ const log = require('electron-log');
 var vex = require('vex-js')
 vex.registerPlugin(require('vex-dialog'));
 vex.defaultOptions.className = 'vex-theme-os';
+var settingsLoader = require('./settings.ts');
 
 @Component({
   selector: 'App',
   templateUrl: './app.component.html'
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, AfterViewInit {
   constructor(private ref: ApplicationRef) {
   }
   //0 not logged in, 1 selling, -1 not selling
@@ -22,11 +23,17 @@ export class AppComponent implements OnInit {
   public username = '';
   public password = '';
   public trades = [];
+  public saveLogin = true;
+  public savePassword = false;
   ngOnInit(): void {
-    log.info('component initialized');
     this.init_messages();
+    log.info('component initialized');
+  }
+  ngAfterViewInit() {
+    this.loadSettings();
   }
   init_messages() {
+    let self = this;
     ipcRenderer.on('need-steamguardcode', (event: any, arg: any) => {
       log.info(`got msg need-steamguardcode`);
       vex.dialog.open({
@@ -40,7 +47,8 @@ export class AppComponent implements OnInit {
         ],
         callback: function (data: any) {
           if (!data) {
-            log.info('Cancelled')
+            log.info('Cancelled');
+            self.isLogginIn = false;
           } else {
             log.info('Code: ', data.code);
             ipcRenderer.send('need-steamguardcode', data.code);
@@ -79,8 +87,40 @@ export class AppComponent implements OnInit {
       }
     });
   }
-
-
+  async loadSettings() {
+    try {
+      let settings = { login: '', password: '', saveLogin: true, savePassword: false };
+    let loadedSettings = JSON.parse(await settingsLoader.readAsync());
+    if (loadedSettings) {
+      if (loadedSettings.login) {
+        settings.login = loadedSettings.login;
+      }
+      if (loadedSettings.password) {
+        settings.password = Buffer.from(loadedSettings.password, 'base64').toString('ascii');
+      }
+      settings.savePassword = loadedSettings.savePassword ? true : false;
+      settings.saveLogin = loadedSettings.saveLogin ? true : false;
+    }
+    this.saveLogin = settings.saveLogin;
+    this.savePassword = settings.savePassword;
+    this.username = settings.login;
+    this.password = settings.password;
+    } catch (error) {
+      log.error(`loadSettings ${error}`);
+    }
+  }
+  async saveSettings() {
+    let settings = { login: '', password: '', saveLogin: true, savePassword: false };
+    settings.saveLogin = this.saveLogin;
+    settings.savePassword = this.savePassword;
+    if (this.saveLogin) {
+      settings.login = this.username;
+    }
+    if (this.savePassword) {
+      settings.password = Buffer.from(this.password).toString('base64');
+    }
+    settingsLoader.writeAsync(JSON.stringify(settings));
+  }
   login() {
     this.isLogginIn = true;
     ipcRenderer.send('login-steam', { username: this.username, password: this.password })

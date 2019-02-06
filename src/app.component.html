@@ -53,7 +53,7 @@
                     <label for="inputPassword">Password</label>
                 </div>
 
-                <button (click)="login()" class="btn btn-lg btn-primary btn-block">
+                <button (click)="login();saveSettings();" class="btn btn-lg btn-primary btn-block">
                     <i *ngIf="isLogginIn" class="fa fa-circle-o-notch fa-spin"></i>
                     Sign in
                 </button>
@@ -74,7 +74,7 @@
         </div>
         <div class="col-12">
             <div *ngIf="!trades.length" class="align-items-center justify-content-center">
-                <div class="col-6 offset-3">
+                <div class="col-4 offset-4">
                     <img class="img-fluid" src="img/no.png">
                 </div>
                 <p class="text-center">
@@ -118,7 +118,24 @@
             </div>
         </div>
     </div>
-    <div class="tab-pane fade" id="pills-settings" role="tabpanel" aria-labelledby="pills-settings-tab">
-        ...
+    <div class="tab-pane fade col-12 p-3" id="pills-settings" role="tabpanel" aria-labelledby="pills-settings-tab">
+        <div class="form-check" (change)="saveSettings()">
+            <input class="form-check-input" type="checkbox" [(ngModel)]="saveLogin" id="save-login">
+            <label class="form-check-label" for="save-login">
+                Save login
+            </label>
+        </div>
+        <div class="form-check" (change)="saveSettings()">
+            <input class="form-check-input" type="checkbox" [(ngModel)]="savePassword" id="save-password">
+            <label class="form-check-label" for="save-password">
+                Save password
+            </label>
+        </div>
+        <!-- <div class="form-check" (click)="saveSettings()">
+            <input class="form-check-input" type="checkbox" value="" id="enable-sound">
+            <label class="form-check-label" for="enable-sound">
+                Enable sound
+            </label>
+        </div> -->
     </div>
 </div>
