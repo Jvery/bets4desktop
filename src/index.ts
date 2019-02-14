@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { enableLiveReload } from 'electron-compile';
 import { JsonPipe } from '@angular/common';
 var path = require('path');
+const notifier = require('node-notifier');
 if (require('electron-squirrel-startup')) app.quit()
 // if first time install on windows, do not run application, rather
 // let squirrel installer do its work
@@ -122,7 +123,10 @@ ipcMain.on('relog-steam', (event: any, args: any) => {
   log.info(`received relog-steam msg wtih args: ${JSON.stringify(args)}`);
   relog();
 });
-
+ipcMain.on('enableNotificationsChanged', (event: any, args: any) => {
+  log.info(`received enableNotificationsChanged msg wtih args: ${JSON.stringify(args)}`);
+  enableNotifications = args;
+});
 function login(username: string, password: string) {
   // log.info(log.transports.file.findLogPath());
   let logOnOptions = {
@@ -144,6 +148,7 @@ function relog() {
   client.webLogOn();
 }
 
+let enableNotifications = true;
 let isRelogNeededByCommunity = false;
 let is_tradingDemon_started = false;
 let tradingDemonTimeout = 5000; //in ms
@@ -522,8 +527,16 @@ function createTradeoffer(trade: any) {
             return;
           } else {
             reportTradeByOfferAndStatus(offer, 0);
+            if (enableNotifications) {
+              notifier.notify({
+                title: 'New Trade',
+                message: `Please accept this trade in Steam mobile app, buyer name: ${trade.buyer_data.name}, Protection Code: ${trade.protection_code}`,
+                icon: path.join(__dirname, '/img/logo300x300.png'),
+                sound: true
+              });
+            }
             if (status == 'pending') {
-              log.info(`now need confirm offer. status: ${status} Offer #${offer.id}`)
+              log.info(`now need confirm offer. status: ${status} Offer #${offer.id}`);
               return;
             } else {
               log.info(`Offer #${offer.id} tradeid ${trade.trade_id} sent successfully`);

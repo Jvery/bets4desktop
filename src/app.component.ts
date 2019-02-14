@@ -25,6 +25,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   public trades = [];
   public saveLogin = true;
   public savePassword = false;
+  public enableNotifications = true;
   ngOnInit(): void {
     this.init_messages();
     log.info('component initialized');
@@ -89,30 +90,34 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
   async loadSettings() {
     try {
-      let settings = { login: '', password: '', saveLogin: true, savePassword: false };
-    let loadedSettings = JSON.parse(await settingsLoader.readAsync());
-    if (loadedSettings) {
-      if (loadedSettings.login) {
-        settings.login = loadedSettings.login;
+      let settings = { login: '', password: '', saveLogin: true, savePassword: false, enableNotifications: true };
+      let loadedSettings = JSON.parse(await settingsLoader.readAsync());
+      if (loadedSettings) {
+        if (loadedSettings.login) {
+          settings.login = loadedSettings.login;
+        }
+        if (loadedSettings.password) {
+          settings.password = Buffer.from(loadedSettings.password, 'base64').toString('ascii');
+        }
+        settings.savePassword = loadedSettings.savePassword ? true : false;
+        settings.saveLogin = loadedSettings.saveLogin ? true : false;
+        settings.enableNotifications = loadedSettings.enableNotifications ? true : false;
       }
-      if (loadedSettings.password) {
-        settings.password = Buffer.from(loadedSettings.password, 'base64').toString('ascii');
-      }
-      settings.savePassword = loadedSettings.savePassword ? true : false;
-      settings.saveLogin = loadedSettings.saveLogin ? true : false;
-    }
-    this.saveLogin = settings.saveLogin;
-    this.savePassword = settings.savePassword;
-    this.username = settings.login;
-    this.password = settings.password;
+      this.saveLogin = settings.saveLogin;
+      this.savePassword = settings.savePassword;
+      this.username = settings.login;
+      this.password = settings.password;
+      this.enableNotifications = settings.enableNotifications;
+      this.enableNotificationsChanged();
     } catch (error) {
       log.error(`loadSettings ${error}`);
     }
   }
   async saveSettings() {
-    let settings = { login: '', password: '', saveLogin: true, savePassword: false };
+    let settings = { login: '', password: '', saveLogin: true, savePassword: false, enableNotifications: true };
     settings.saveLogin = this.saveLogin;
     settings.savePassword = this.savePassword;
+    settings.enableNotifications = this.enableNotifications;
     if (this.saveLogin) {
       settings.login = this.username;
     }
@@ -121,9 +126,14 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
     settingsLoader.writeAsync(JSON.stringify(settings));
   }
+  enableNotificationsChanged() {
+    ipcRenderer.send('enableNotificationsChanged', this.enableNotifications);
+  }
   login() {
-    this.isLogginIn = true;
-    ipcRenderer.send('login-steam', { username: this.username, password: this.password })
+    if (this.username && this.password) {
+      this.isLogginIn = true;
+      ipcRenderer.send('login-steam', { username: this.username, password: this.password });
+    }
   }
   relog() {
     ipcRenderer.send('relog-steam', {});
