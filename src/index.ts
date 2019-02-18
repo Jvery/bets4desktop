@@ -128,7 +128,6 @@ ipcMain.on('enableNotificationsChanged', (event: any, args: any) => {
   enableNotifications = args;
 });
 function login(username: string, password: string) {
-  // log.info(log.transports.file.findLogPath());
   let logOnOptions = {
     "accountName": username,
     "password": password

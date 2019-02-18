@@ -1,5 +1,9 @@
 let fs = require('fs');
 let path = `${__dirname}/settings.txt`;
+
+function setPath(newPath: string) {
+ path = newPath;
+}
 async function readSettings() {
     let settings = {};
     try {
@@ -9,7 +13,6 @@ async function readSettings() {
     }
     return settings;
 }
-
 async function writeSettings(settings: any) {
     try {
         writeFile(path, settings);
@@ -43,3 +46,4 @@ function writeFile(savPath: any, data: any) {
 }
 module.exports.writeAsync = writeSettings;
 module.exports.readAsync = readSettings;
+module.exports.setPath = setPath;

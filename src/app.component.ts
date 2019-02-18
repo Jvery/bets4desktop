@@ -3,6 +3,8 @@ import { BrowserModule } from '@angular/platform-browser';
 import { Component, OnInit, AfterViewInit, ApplicationRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { __await } from 'tslib';
+const remote = require('electron').remote;
+const app = remote.app;
 const { ipcRenderer } = require('electron');
 const log = require('electron-log');
 var vex = require('vex-js')
@@ -90,6 +92,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
   async loadSettings() {
     try {
+      settingsLoader.setPath(`${app.getPath('userData')}/settingsbets.txt`);
       let settings = { login: '', password: '', saveLogin: true, savePassword: false, enableNotifications: true };
       let loadedSettings = JSON.parse(await settingsLoader.readAsync());
       if (loadedSettings) {
