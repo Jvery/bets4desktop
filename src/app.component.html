@@ -110,7 +110,7 @@
                     Items:
                 </div>
                 <div class="row m-0 p-1">
-                    <div *ngFor="let item of trade.items_data" class="col-2 m-0 p-1">
+                    <div *ngFor="let item of trade.items_data" class="m-0 p-1" style="width: 105px; height: 70px;">
                         <img src="{{item.img}}" class="img-fluid rounded" [ngStyle]="{'border': '3px solid '+item.color}"
                             data-toggle="tooltip" data-placement="bottom" title="{{item.name}}">
                     </div>
