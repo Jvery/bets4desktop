@@ -52,6 +52,7 @@ export class AppComponent implements OnInit, AfterViewInit {
           if (!data) {
             log.info('Cancelled');
             self.isLogginIn = false;
+            self.ref.tick();
           } else {
             log.info('Code: ', data.code);
             ipcRenderer.send('need-steamguardcode', data.code);
@@ -131,6 +132,9 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
   enableNotificationsChanged() {
     ipcRenderer.send('enableNotificationsChanged', this.enableNotifications);
+  }
+  setAppState(state: number) {
+    ipcRenderer.send('setAppState', state);
   }
   login() {
     if (this.username && this.password) {

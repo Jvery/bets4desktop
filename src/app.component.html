@@ -48,28 +48,38 @@
                 </div>
 
                 <div class="form-label-group">
-                    <input [(ngModel)]="password" (keyup.enter)="login()" type="password" id="inputPassword" class="form-control"
-                        placeholder="Password" name="Password" required="">
+                    <input [(ngModel)]="password" (keyup.enter)="login()" type="password" id="inputPassword"
+                        class="form-control" placeholder="Password" name="Password" required="">
                     <label for="inputPassword">Password</label>
                 </div>
 
                 <button (click)="login();saveSettings();" class="btn btn-lg btn-primary btn-block">
-                    <i *ngIf="isLogginIn" class="fa fa-circle-o-notch fa-spin"></i>
+                    <i *ngIf="isLogginIn" class="fa fa-circle-o-notch fa-spin"> </i>
+                    <i *ngIf="!isLogginIn" class="fa fa-steam"> </i> 
                     Sign in
                 </button>
             </form>
         </div>
     </div>
-    <div class="tab-pane fade" id="pills-trades" role="tabpanel" aria-labelledby="pills-trades-tab" style="height: 100vh; overflow: auto;">
-        <div class="col-12 my-3 text-center">
-            <div *ngIf="appState==0" class="alert alert-secondary col-10 offset-1" role="alert">
+    <div class="tab-pane fade" id="pills-trades" role="tabpanel" aria-labelledby="pills-trades-tab"
+        style="height: 100vh; overflow: auto;">
+        <div class="row m-3 text-center">
+            <div *ngIf="appState==0" class="alert alert-secondary col-11" role="alert">
                 Log in to start selling
             </div>
-            <div *ngIf="appState==1" class="alert alert-success col-10 offset-1" role="alert">
+            <div *ngIf="appState==1" class="alert alert-success col-11" role="alert">
                 Selling is active
             </div>
-            <div *ngIf="appState==-1" class="alert alert-danger col-10 offset-1" role="alert">
-                Selling isn't active
+            <div *ngIf="appState==-1" class="alert alert-danger col-11" role="alert">
+                Selling isn't active. Click <i class="fa fa-play"></i> to enable
+            </div>
+            <div class="col-1">
+                <button *ngIf="appState==-1" class="btn btn-lg btn-primary" data-toggle="tooltip" title="Start" (click)="setAppState(1);">
+                    <i class="fa fa-play"></i>
+                </button>
+                <button *ngIf="appState==1 || appState==0" [disabled]="appState==0" class="btn btn-lg btn-primary" data-toggle="tooltip" title="Stop" (click)="setAppState(-1);">
+                    <i class="fa fa-pause"></i>
+                </button>
             </div>
         </div>
         <div class="col-12">
@@ -87,7 +97,8 @@
             <div *ngFor="let trade of trades" class="my-2 p-1 border border-success">
                 <div class="row m-0 p-0 text-nowrap" style="height: 60px">
                     <div class="col-2 m-0 p-1">
-                        <img class="img-fluid position-absolute h-100 rounded" src="{{trade.buyer_data.avatar}}" style="opacity: 0.4">
+                        <img class="img-fluid position-absolute h-100 rounded" src="{{trade.buyer_data.avatar}}"
+                            style="opacity: 0.4">
                     </div>
                     <div class="col-5 pl-1">
                         <div class="col-12 text-truncate p-0">
@@ -111,8 +122,9 @@
                 </div>
                 <div class="row m-0 p-1">
                     <div *ngFor="let item of trade.items_data" class="m-0 p-1" style="width: 105px; height: 70px;">
-                        <img src="{{item.img}}" class="img-fluid rounded" [ngStyle]="{'border': '3px solid '+item.color}"
-                            data-toggle="tooltip" data-placement="bottom" title="{{item.name}}">
+                        <img src="{{item.img}}" class="img-fluid rounded"
+                            [ngStyle]="{'border': '3px solid '+item.color}" data-toggle="tooltip"
+                            data-placement="bottom" title="{{item.name}}">
                     </div>
                 </div>
             </div>

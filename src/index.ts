@@ -15,6 +15,7 @@ const log = require('electron-log');
 // Write to this file, must be set before first logging
 log.transports.file.level = 'debug';
 log.transports.rendererConsole.level = 'debug';
+log.transports.file.maxSize = 10 * 1024 * 1024;
 require('update-electron-app')({
   repo: 'Jvery/bets4desktop',
   logger: log
@@ -100,10 +101,23 @@ const stopApp = async () => {
   fkill(`bets4desktop`, true, true, true);
 }
 
-
+//0 not logged in, 1 selling, -1 not selling
+let appState = 0;
+async function updateAppState(state: number) {
+  log.info(`updateAppState  ${appState} -> ${state}`)
+  appState = state;
+  if (mainWindow) {
+    mainWindow.webContents.send('appState-update', state);
+  }
+  if (appState == -1) {
+    let result = await bets4proReportAppStatus(botSteamId, 2);
+    log.info(`appstatus updateAppState report 2 ${result}`);
+  } else {
+    appStatusDemon(0);
+  }
+}
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
-
 
 let isClosingApp = false;
 let SteamClient = require('steam-client');
@@ -123,6 +137,10 @@ ipcMain.on('relog-steam', (event: any, args: any) => {
   log.info(`received relog-steam msg wtih args: ${JSON.stringify(args)}`);
   relog();
 });
+ipcMain.on('setAppState', (event: any, args: any) => {
+  log.info(`received setAppState msg wtih args: ${JSON.stringify(args)}`);
+  updateAppState(args);
+});
 ipcMain.on('enableNotificationsChanged', (event: any, args: any) => {
   log.info(`received enableNotificationsChanged msg wtih args: ${JSON.stringify(args)}`);
   enableNotifications = args;
@@ -137,7 +155,7 @@ function login(username: string, password: string) {
   } catch (err) {
     if (mainWindow) {
       mainWindow.webContents.send('isLogginIn', false);
-      mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
+      mainWindow.webContents.send('vex-alert', `${err.name}: ${err.message}`);
     }
   }
 }
@@ -176,10 +194,10 @@ let manager = new TradeOfferManager({
 // If this event isn't handled, the program will crash.
 // The SteamUser object's steamID property will still be defined when this is emitted. The Error object will have an eresult parameter which is a value from the EResult enum.
 client.on('error', function (err: any) {
-  log.error(`error ${err}`);
+  log.error(`error onerror ${err}`);
   if (mainWindow) {
     mainWindow.webContents.send('isLogginIn', false);
-    mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
+    mainWindow.webContents.send('vex-alert', `${err.name}: ${err.message}`);
   }
 });
 
@@ -243,7 +261,10 @@ client.on('webSession', function (sessionID: any, cookies: any) {
           log.error(`ERROR setCookies ${err.name} \n ${err.message} \n ${err.stack}`);
           if (mainWindow) {
             mainWindow.webContents.send('isLogginIn', false);
-            mainWindow.webContents.send('vex-alert', `${err.name} ${err.message}`);
+            if (err.message==`Access Denied`){
+              err.message+=`. Please make sure that you deposited at least $5 on your Steam account and don't have ban.`
+            }
+            mainWindow.webContents.send('vex-alert', `${err.name}: ${err.message}`);
           }
           return;
         }
@@ -259,7 +280,7 @@ client.on('webSession', function (sessionID: any, cookies: any) {
           let trades = await getTrades(botSteamId);
           currentTradesInApi = trades;
           if (mainWindow) {
-            mainWindow.webContents.send('appState-update', 1);
+            updateAppState(1);
             mainWindow.webContents.send('isLogginIn', false);
           }
           tradingDemon();
@@ -293,6 +314,17 @@ manager.on('sentOfferChanged', function (offer: any, oldState: any) {
     } else if (offer.state === 3) { //successful trade
       reportTradeByOfferAndStatus(offer, 1);
     } else { //all other are canceled trades
+      if (mainWindow && offer.state === 6) {
+        log.info(`offer ${offer.data('trade_id')} was canceled disabling trading`);
+        updateAppState(-1);
+        mainWindow.webContents.send('vex-alert', `Trading was disalbed because you have missed trade. Click ► button in Trades tab to enable`);
+        notifier.notify({
+          title: 'Attention',
+          message: `Trading was disalbed because you have missed trade`,
+          icon: path.join(__dirname, '/img/logo300x300.png'),
+          sound: true
+        });
+      }
       reportTradeByOfferAndStatus(offer, 2);
     }
   } catch (error) {
@@ -351,12 +383,15 @@ async function relogginDemon(timeout: number) {
     return;
   }
   try {
+    if (appState == -1) {
+      throw `can't relog with appState ${appState}`;
+    }
     log.info(`relogginDemon started`);
     let currentTimeInMs = (new Date()).getTime();
     if (!(client && client.client && client.client.loggedOn) || isRelogNeededByCommunity) {
-      NumberOfUnccessfulRelogs++;
       log.info(`relogginDemon need relog!`);
       if (currentTimeInMs - lastRelogTimeInMs > minTimeBetweenRelogsInMs) {
+        NumberOfUnccessfulRelogs++;
         //sending request to receive error and relog
         community.getWebApiKey('', (err: any, key: any) => {
           try {
@@ -369,7 +404,7 @@ async function relogginDemon(timeout: number) {
             } else {
               log.error(`relogginDemon can't relog client.steamID ${client.steamID}`);
               if (mainWindow) {
-                mainWindow.webContents.send('appState-update', 0);
+                updateAppState(0);
                 mainWindow.webContents.send('vex-alert', `Need manual relog to continue selling`);
               }
             }
@@ -383,7 +418,7 @@ async function relogginDemon(timeout: number) {
     } else {
       NumberOfUnccessfulRelogs = 0;
       if (mainWindow) {
-        mainWindow.webContents.send('appState-update', 1);
+        updateAppState(1);
       }
     }
   } catch (error) {
@@ -391,7 +426,8 @@ async function relogginDemon(timeout: number) {
   } finally {
     if (NumberOfUnccessfulRelogs >= minNumberOfUncessfullRelogsToStopSelling) {
       if (mainWindow) {
-        mainWindow.webContents.send('appState-update', -1);
+        updateAppState(-1);
+        mainWindow.webContents.send('vex-alert', `Can't relog. Please restart app`); 
       }
     }
     if (timeout) {
@@ -419,13 +455,14 @@ async function appStatusDemon(timeout: number) {
     log.error(`appStatusDemon error ${error}`)
   }
   try {
-    log.info(`reporting appstatus: steamid ${botSteamId} isClientLoggedIn ${isClientLoggedIn} isCommunityLoggedIn ${isCommunityLoggedIn}  status ${isCommunityLoggedIn && isClientLoggedIn ? 1 : 0}`)
-    let result = await bets4proReportAppStatus(botSteamId, isCommunityLoggedIn && isClientLoggedIn ? 1 : 0);
+    log.info(`reporting appstatus: steamid ${botSteamId} isClientLoggedIn ${isClientLoggedIn} isCommunityLoggedIn ${isCommunityLoggedIn} appState ${appState} status ${isCommunityLoggedIn && isClientLoggedIn && appState == 1 ? 1 : 0}`)
+    let result = await bets4proReportAppStatus(botSteamId, isCommunityLoggedIn && isClientLoggedIn && appState == 1 ? 1 : 0);
     log.info(`appStatusDemon result: ${JSON.stringify(result)}`)
   } catch (error) {
     log.error(error)
   }
   if (timeout) {
+    log.info(`appStatusDemon timeout ${timeout}`);
     setTimeout(() => {
       appStatusDemon(timeout);
     }, timeout);
@@ -438,11 +475,11 @@ async function tradingDemon() {
     return;
   }
   try {
-    if (client && client.client && client.client.loggedOn) {
-      let trades = await getTrades(botSteamId);
-      if (mainWindow) {
-        mainWindow.webContents.send('trades-update', trades);
-      }
+    let trades = await getTrades(botSteamId);
+    if (mainWindow) {
+      mainWindow.webContents.send('trades-update', trades);
+    }
+    if (client && client.client && client.client.loggedOn && appState == 1) {
       if (trades && trades.length) {
         log.info(`Got ${trades && trades.length || 0} trades in bets4pro API`);
       }
@@ -478,7 +515,7 @@ async function tradingDemon() {
         }
       }
     } else {
-      log.info(`trading demon not logged in`);
+      log.info(`trading demon login status ${client && client.client && client.client.loggedOn} appstate ${appState}`);
     }
   } catch (error) {
     log.error(`tradingDemon ${error}`)
@@ -529,7 +566,7 @@ function createTradeoffer(trade: any) {
             if (enableNotifications) {
               notifier.notify({
                 title: 'New Trade',
-                message: `Please accept this trade in Steam mobile app, buyer name: ${trade.buyer_data.name}, Protection Code: ${trade.protection_code}`,
+                message: `Please accept this trade in Steam mobile app.\nBuyer name: ${trade.buyer_data.name}\nProtection Code: ${trade.protection_code}`,
                 icon: path.join(__dirname, '/img/logo300x300.png'),
                 sound: true
               });
@@ -632,6 +669,9 @@ async function reportTradeByOfferAndStatus(tradeoffer: any, tradeStatus: any) {
 
 async function getTrades(botSteamId: any) {
   try {
+    if (!botSteamId) {
+      throw `no botSteamId ${botSteamId}`;
+    }
     let responseFromApi = JSON.parse(await bets4proGetTradesRequest(botSteamId));
     if (responseFromApi) {
       let trades = responseFromApi.response;
@@ -703,6 +743,9 @@ function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, 
   });
 }
 
+// 1 - on
+// 0 - delayed off
+// 2 - instant off
 function bets4proReportAppStatus(steamid: any, app_status: number) {
   return new Promise(function (resolve, reject) {
     request.post({
