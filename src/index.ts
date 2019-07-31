@@ -348,6 +348,7 @@ manager.on('unknownOfferSent', function (offer: any) {
     if (foundTrade) {
       log.info(`Found trade in api for offer #${offer.id}, setting trade_id to ${foundTrade.trade_id}`);
       offer.data('trade_id', foundTrade.trade_id);
+      cancelOffer(offer);
     } else {
       log.info(`Can't find offer with message ${offer.message} in currentTradesInApi reporting by prot code`);
       reportTradeByOfferAndStatus(offer, -1);
@@ -363,9 +364,7 @@ manager.on('newOffer', function (offer: any) {
     if (sentTrades.findIndex(sent_trade => `Protection Code: ${sent_trade.protection_code}` === offer.message) != -1) {
       //fake trade, canceling
       log.info(`fake offer ${offer.id} ${offer.message} canceling`);
-      offer.cancel((err: any) => {
-        log.info(`offer cancel ${offer.id} ${offer.message} error: ${err}`)
-      });
+      cancelOffer(offer);
       if (mainWindow) {
         mainWindow.webContents.send('vex-alert', `Your API key was compromised, please change it and never let untrusted 3rd party get it again!`);
       }
@@ -435,7 +434,28 @@ async function relogginDemon(timeout: number) {
     }
   }
 }
+function cancelOffer(offer: any) {
+  if (offer.state !== 2 && offer.state !== 9) {
+    log.info(`Can't cancel offer #${offer.id} trade_id ${offer.data('trade_id')} with state: ${TradeOfferManager.ETradeOfferState[offer.state]}`);
+    return;
+  }
+  offer.update(function (err: any) {
+    if (err) {
+      log.error(`Error updating data of offer #${offer.id}  trade_id ${offer.data('trade_id')}`);
+    }
+  });
+  offer.cancel(function (err: any) {
+    if (err) {
+      let retryInSec = 30;
+      log.error(`Error canceling offer #${offer.id} from ${offer.partner}. Retry in ${retryInSec} sec. ${err}`);
+      setTimeout(cancelOffer.bind(null, offer), retryInSec * 1000);
+      return;
+    } else {
+      log.info(`Canceled trade_id ${offer.data('trade_id')} tradeoffer_id ${offer.id}`);
+    }
 
+  });
+}
 async function appStatusDemon(timeout: number) {
   if (isClosingApp) {
     log.info(`appStatusDemon stopped coz closing`);
@@ -684,7 +704,7 @@ async function getTrades(botSteamId: any) {
 function bets4proGetTradesRequest(botSteamId: any): Promise<string> {
   return new Promise(function (resolve, reject) {
     request.post({
-      url: "http://api.bets4.pro/api_user_trades.php ",
+      url: "http://api.bets4.info/api_user_trades.php ",
       form: {
         steamid: botSteamId
       }
@@ -702,7 +722,7 @@ function bets4proGetTradesRequest(botSteamId: any): Promise<string> {
 function bets4proSaveApiKey(botSteamId: any, apiKey: any): Promise<string> {
   return new Promise(function (resolve, reject) {
     request.post({
-      url: "http://api.bets4.pro/user_trades_apikey_post.php ",
+      url: "http://api.bets4.info/user_trades_apikey_post.php ",
       form: {
         steamid: botSteamId,
         api_key_seller: apiKey
@@ -730,7 +750,7 @@ function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, 
       protection_code: protectionCode
     }
     request.post({
-      url: "http://api.bets4.pro/user_trades_post.php",
+      url: "http://api.bets4.info/user_trades_post.php",
       form: data
     },
       function (error: any, response: any, body: any) {
@@ -749,7 +769,7 @@ function bets4proReportTrade(tradeId: any, tradeStatus: any, tradeofferId: any, 
 function bets4proReportAppStatus(steamid: any, app_status: number) {
   return new Promise(function (resolve, reject) {
     request.post({
-      url: "http://api.bets4.pro/api_app_status.php",
+      url: "http://api.bets4.info/api_app_status.php",
       form: {
         steamid: steamid,
         app_status: app_status
