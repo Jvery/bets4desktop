@@ -130,11 +130,11 @@ let request = require('request');
 
 
 ipcMain.on('login-steam', (event: any, args: any) => {
-  log.info(`received login-steam msg wtih args: ${JSON.stringify(args)}`);
+  log.info(`received login-steam msg with args: ${JSON.stringify(args)}`);
   login(args.username, args.password);
 });
 ipcMain.on('relog-steam', (event: any, args: any) => {
-  log.info(`received relog-steam msg wtih args: ${JSON.stringify(args)}`);
+  log.info(`received relog-steam msg with args: ${JSON.stringify(args)}`);
   relog();
 });
 ipcMain.on('setAppState', (event: any, args: any) => {
@@ -144,6 +144,10 @@ ipcMain.on('setAppState', (event: any, args: any) => {
 ipcMain.on('enableNotificationsChanged', (event: any, args: any) => {
   log.info(`received enableNotificationsChanged msg wtih args: ${JSON.stringify(args)}`);
   enableNotifications = args;
+});
+ipcMain.on('enableSoundsChanged', (event: any, args: any) => {
+  log.info(`received enableSoundsChanged msg wtih args: ${JSON.stringify(args)}`);
+  enableSounds = args;
 });
 function login(username: string, password: string) {
   let logOnOptions = {
@@ -166,6 +170,7 @@ function relog() {
 }
 
 let enableNotifications = true;
+let enableSounds = true;
 let isRelogNeededByCommunity = false;
 let is_tradingDemon_started = false;
 let tradingDemonTimeout = 5000; //in ms
@@ -500,9 +505,9 @@ async function tradingDemon() {
       mainWindow.webContents.send('trades-update', trades);
     }
     if (client && client.client && client.client.loggedOn && appState == 1) {
-      if (trades && trades.length) {
+      //if (trades && trades.length) {
         log.info(`Got ${trades && trades.length || 0} trades in bets4pro API`);
-      }
+      //}
       if (trades) {
         currentTradesInApi = trades;
         for (let i = 0; i < trades.length; i++) {
@@ -588,7 +593,7 @@ function createTradeoffer(trade: any) {
                 title: 'New Trade',
                 message: `Please accept this trade in Steam mobile app.\nBuyer name: ${trade.buyer_data.name}\nProtection Code: ${trade.protection_code}`,
                 icon: path.join(__dirname, '/img/logo300x300.png'),
-                sound: true
+                sound: enableSounds
               });
             }
             if (status == 'pending') {

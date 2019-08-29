@@ -28,6 +28,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   public saveLogin = true;
   public savePassword = false;
   public enableNotifications = true;
+  public enableSounds = true;
   ngOnInit(): void {
     this.init_messages();
     log.info('component initialized');
@@ -94,7 +95,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   async loadSettings() {
     try {
       settingsLoader.setPath(`${app.getPath('userData')}/settingsbets.txt`);
-      let settings = { login: '', password: '', saveLogin: true, savePassword: false, enableNotifications: true };
+      let settings = { login: '', password: '', saveLogin: true, savePassword: false, enableNotifications: true, enableSounds: true };
       let loadedSettings = JSON.parse(await settingsLoader.readAsync());
       if (loadedSettings) {
         if (loadedSettings.login) {
@@ -106,22 +107,26 @@ export class AppComponent implements OnInit, AfterViewInit {
         settings.savePassword = loadedSettings.savePassword ? true : false;
         settings.saveLogin = loadedSettings.saveLogin ? true : false;
         settings.enableNotifications = loadedSettings.enableNotifications ? true : false;
+        settings.enableSounds = loadedSettings.enableSounds ? true : false;
       }
       this.saveLogin = settings.saveLogin;
       this.savePassword = settings.savePassword;
       this.username = settings.login;
       this.password = settings.password;
       this.enableNotifications = settings.enableNotifications;
+      this.enableSounds = settings.enableSounds;
       this.enableNotificationsChanged();
+      this.enableSoundsChanged();
     } catch (error) {
       log.error(`loadSettings ${error}`);
     }
   }
   async saveSettings() {
-    let settings = { login: '', password: '', saveLogin: true, savePassword: false, enableNotifications: true };
+    let settings = { login: '', password: '', saveLogin: true, savePassword: false, enableNotifications: true, enableSounds: true };
     settings.saveLogin = this.saveLogin;
     settings.savePassword = this.savePassword;
     settings.enableNotifications = this.enableNotifications;
+    settings.enableSounds = this.enableSounds;
     if (this.saveLogin) {
       settings.login = this.username;
     }
@@ -132,6 +137,9 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
   enableNotificationsChanged() {
     ipcRenderer.send('enableNotificationsChanged', this.enableNotifications);
+  }
+  enableSoundsChanged() {
+    ipcRenderer.send('enableSoundsChanged', this.enableSounds);
   }
   setAppState(state: number) {
     ipcRenderer.send('setAppState', state);

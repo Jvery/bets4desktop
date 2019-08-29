@@ -149,5 +149,11 @@
                 Enable notifications
             </label>
         </div>
+        <div *ngIf="enableNotifications==1" class="form-check" (change)="saveSettings(); enableSoundsChanged();">
+            &emsp;<input class="form-check-input" type="checkbox" [(ngModel)]="enableSounds" id="enable-sounds">
+            <label class="form-check-label" for="enable-sounds">
+                Enable sounds
+            </label>
+        </div>
     </div>
 </div>
