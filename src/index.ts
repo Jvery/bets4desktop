@@ -715,7 +715,7 @@ async function getTrades(botSteamId: any) {
 function bets4proGetTradesRequest(botSteamId: any): Promise<string> {
   return new Promise(function (resolve, reject) {
     request.post({
-      url: "http://api.bets4.info/api_user_trades.php ",
+      url: "http://api.bets4.info/api_user_trades.php",
       form: {
         steamid: botSteamId
       }
