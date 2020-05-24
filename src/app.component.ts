@@ -3,6 +3,8 @@ import { BrowserModule } from '@angular/platform-browser';
 import { Component, OnInit, AfterViewInit, ApplicationRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { __await } from 'tslib';
+var path = require('path')
+var sound = require('./sound.ts')
 const remote = require('electron').remote;
 const app = remote.app;
 const { ipcRenderer } = require('electron');
@@ -35,6 +37,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
   ngAfterViewInit() {
     this.loadSettings();
+    sound.preload();
   }
   init_messages() {
     let self = this;
@@ -90,6 +93,9 @@ export class AppComponent implements OnInit, AfterViewInit {
         this.trades = trades;
         this.ref.tick();
       }
+    });
+    ipcRenderer.on('play-sound', (event: any, type: string) => {
+      sound.play(type);
     });
   }
   async loadSettings() {

@@ -266,8 +266,8 @@ client.on('webSession', function (sessionID: any, cookies: any) {
           log.error(`ERROR setCookies ${err.name} \n ${err.message} \n ${err.stack}`);
           if (mainWindow) {
             mainWindow.webContents.send('isLogginIn', false);
-            if (err.message==`Access Denied`){
-              err.message+=`. Please make sure that you deposited at least $5 on your Steam account and don't have ban.`
+            if (err.message == `Access Denied`) {
+              err.message += `. Please make sure that you deposited at least $5 on your Steam account and don't have ban.`
             }
             mainWindow.webContents.send('vex-alert', `${err.name}: ${err.message}`);
           }
@@ -327,8 +327,11 @@ manager.on('sentOfferChanged', function (offer: any, oldState: any) {
           title: 'Attention',
           message: `Trading was disalbed because you have missed trade`,
           icon: path.join(__dirname, '/img/logo300x300.png'),
-          sound: true
+          sound: false
         });
+        if (enableSounds && mainWindow) {
+          mainWindow.webContents.send('play-sound', `NOTIFICATION`);
+        }
       }
       reportTradeByOfferAndStatus(offer, 2);
     }
@@ -431,7 +434,7 @@ async function relogginDemon(timeout: number) {
     if (NumberOfUnccessfulRelogs >= minNumberOfUncessfullRelogsToStopSelling) {
       if (mainWindow) {
         updateAppState(-1);
-        mainWindow.webContents.send('vex-alert', `Can't relog. Please restart app`); 
+        mainWindow.webContents.send('vex-alert', `Can't relog. Please restart app`);
       }
     }
     if (timeout) {
@@ -506,7 +509,7 @@ async function tradingDemon() {
     }
     if (client && client.client && client.client.loggedOn && appState == 1) {
       //if (trades && trades.length) {
-        log.info(`Got ${trades && trades.length || 0} trades in bets4pro API`);
+      log.info(`Got ${trades && trades.length || 0} trades in bets4pro API`);
       //}
       if (trades) {
         currentTradesInApi = trades;
@@ -593,8 +596,11 @@ function createTradeoffer(trade: any) {
                 title: 'New Trade',
                 message: `Please accept this trade in Steam mobile app.\nBuyer name: ${trade.buyer_data.name}\nProtection Code: ${trade.protection_code}`,
                 icon: path.join(__dirname, '/img/logo300x300.png'),
-                sound: enableSounds
+                sound: false
               });
+              if (enableSounds && mainWindow) {
+                mainWindow.webContents.send('play-sound', `NOTIFICATION`);
+              }
             }
             if (status == 'pending') {
               log.info(`now need confirm offer. status: ${status} Offer #${offer.id}`);
