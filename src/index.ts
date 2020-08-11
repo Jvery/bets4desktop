@@ -130,7 +130,7 @@ let request = require('request');
 
 
 ipcMain.on('login-steam', (event: any, args: any) => {
-  log.info(`received login-steam msg with args: ${JSON.stringify(args)}`);
+  log.info(`received login-steam msg}`);
   login(args.username, args.password);
 });
 ipcMain.on('relog-steam', (event: any, args: any) => {
