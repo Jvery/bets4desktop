@@ -46,7 +46,7 @@ const createWindow = async () => {
   if (isDevMode) {
     mainWindow.webContents.openDevTools();
   }
-  log.info(app.getVersion());
+  log.info(`current version: ${app.getVersion()}`);
   // Emitted when the window is closed.
   mainWindow.on('closed', () => {
     // Dereference the window object, usually you would store windows
@@ -733,7 +733,7 @@ function bets4proGetTradesRequest(botSteamId: any): Promise<string> {
 function bets4proSaveApiKey(botSteamId: any, apiKey: any): Promise<string> {
   return new Promise(function (resolve, reject) {
     request.post({
-      url: "http://api.bets4.info/user_trades_apikey_post.php ",
+      url: "http://api.bets4.info/user_trades_apikey_post.php",
       form: {
         steamid: botSteamId,
         api_key_seller: apiKey
