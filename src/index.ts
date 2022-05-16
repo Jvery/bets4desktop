@@ -180,6 +180,7 @@ let relogginDemonTimeoutInMs = 1000 * 60; //in ms
 let minNumberOfUncessfullRelogsToStopSelling = 3;
 let botSteamId = "";
 let sentTrades: any[] = [];
+let timedoutTradesId: any[] = [];
 let currentTradesInApi: any;
 let steamClient = new SteamClient.CMClient();
 let community = new SteamCommunity();
@@ -319,7 +320,7 @@ manager.on('sentOfferChanged', function (offer: any, oldState: any) {
     } else if (offer.state === 3) { //successful trade
       reportTradeByOfferAndStatus(offer, 1);
     } else { //all other are canceled trades
-      if (mainWindow && offer.state === 6) {
+      if (mainWindow && offer.state === 6 && offer.data('trade_id') && timedoutTradesId.findIndex(id => id === offer.id) === -1) {
         log.info(`offer ${offer.data('trade_id')} was canceled disabling trading`);
         updateAppState(-1);
         mainWindow.webContents.send('vex-alert', `Trading was disalbed because you have missed trade. Click ► button in Trades tab to enable`);
@@ -339,6 +340,20 @@ manager.on('sentOfferChanged', function (offer: any, oldState: any) {
     log.error(`sentOfferChanged ${error}`);
   }
 });
+
+manager.on('sentPendingOfferCanceled', function (offer: any) {
+  try {
+    log.info(`got timeout on offer TradeId ${offer.data('trade_id')} offer #${offer.id}`);
+    if (timedoutTradesId.findIndex(id => id==offer.id) === -1) {
+      //fake trade, canceling
+      log.info(`adding ${offer.id} to timedoutTradesId`);
+      timedoutTradesId.push(offer.id);
+    }
+  } catch (error) {
+    log.info(`sentPendingOfferCanceled ${offer.id}  error: ${error}`)
+  }
+});
+
 
 manager.on('unknownOfferSent', function (offer: any) {
   try {
